@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">
+  <style>
+    .bg{fill:#f5f7fb}
+    .card{fill:#ffffff;stroke:#e6e9ef;stroke-width:1;rx:10;ry:10}
+    .muted{fill:#6b7280;font-family:Arial, sans-serif;font-size:13px}
+    .label{fill:#111827;font-family:Arial, sans-serif;font-size:15px;font-weight:700}
+    .input{fill:#fbfdff;stroke:#e6e9ef;stroke-width:1;rx:8;ry:8}
+    .btn-primary{fill:#0b74ff;cursor:pointer}
+    .btn-text{fill:#fff;font-family:Arial, sans-serif;font-size:14px;font-weight:700}
+    .chip{fill:#eef2ff;stroke:#dbe7ff;rx:12;ry:12;font-family:Arial, sans-serif;font-size:12px}
+    .small{font-family:Arial, sans-serif;font-size:12px;fill:#6b7280}
+    .link{fill:#0b74ff;font-family:Arial, sans-serif;font-size:12px}
+    .swatch{stroke:#cbd5e1;stroke-width:1;rx:6;ry:6}
+    .placeholder{fill:#f3f4f6;stroke:#e6e9ef;rx:8}
+    .danger{fill:#fee2e2;stroke:#fecaca;rx:6}
+  </style>
+
+  <rect width="1200" height="980" class="bg"/>
+
+  <!-- Header -->
+  <text x="40" y="48" class="label">Crear producto</text>
+  <text x="40" y="74" class="muted">Admin / Productos / Nuevo</text>
+
+  <!-- Progress -->
+  <g transform="translate(40,100)">
+    <rect width="700" height="14" fill="#eef2ff" rx="6" ry="6"/>
+    <rect width="230" height="14" fill="#0b74ff" rx="6" ry="6"/>
+    <g transform="translate(0,26)">
+      <text x="0" y="16" class="muted">1. Datos base</text>
+      <text x="220" y="16" class="muted">2. Variantes</text>
+      <text x="420" y="16" class="muted">3. Stock &amp; Imágenes</text>
+    </g>
+  </g>
+
+  <!-- Main left card -->
+  <g transform="translate(40,160)">
+    <rect width="760" height="760" class="card"/>
+    <text x="24" y="34" class="label">Paso 1 — Datos base</text>
+
+    <!-- Row: Nombre -->
+    <text x="24" y="72" class="muted">Nombre del producto</text>
+    <rect x="24" y="80" width="520" height="40" class="input"/>
+    <text x="32" y="106" class="small">Ej. Camiseta básica</text>
+
+    <!-- SKU y precio costo -->
+    <text x="24" y="140" class="muted">SKU base</text>
+    <rect x="24" y="148" width="260" height="36" class="input"/>
+    <text x="32" y="176" class="small">autogenera desde nombre</text>
+
+    <text x="320" y="140" class="muted">Precio de costo (editable)</text>
+    <rect x="320" y="148" width="220" height="36" class="input"/>
+    <text x="328" y="176" class="small">$12.00</text>
+    <text x="320" y="196" class="small">Los demás precios se calculan desde costo (Ajustes)</text>
+
+    <!-- Calculated prices block -->
+    <g transform="translate(24,210)">
+      <text x="0" y="0" class="muted">Precios calculados</text>
+      <g transform="translate(0,12)">
+        <rect x="0" y="12" width="320" height="42" class="input"/>
+        <text x="12" y="40" class="small">Mayorista (costo + 35%)</text>
+        <text x="260" y="40" class="small">$16.20</text>
+
+        <rect x="0" y="64" width="320" height="42" class="input"/>
+        <text x="12" y="92" class="small">Feria (costo + 25%)</text>
+        <text x="260" y="92" class="small">$15.00</text>
+
+        <rect x="0" y="116" width="320" height="42" class="input"/>
+        <text x="12" y="144" class="small">Liquidación (costo + 15%)</text>
+        <text x="260" y="144" class="small">$13.80</text>
+      </g>
+    </g>
+
+    <!-- Categoria / Subcategoria -->
+    <g transform="translate(360,210)">
+      <text x="0" y="0" class="muted">Categoría</text>
+      <rect x="0" y="8" width="340" height="36" class="input"/>
+      <text x="8" y="34" class="small">Ej. Ropa</text>
+
+      <text x="0" y="48" class="muted">Subcategoría</text>
+      <rect x="0" y="56" width="340" height="36" class="input"/>
+      <text x="8" y="82" class="small">Depende de categoría</text>
+    </g>
+
+    <!-- Discount -->
+    <g transform="translate(24,330)">
+      <text x="0" y="0" class="muted">Descuento (opcional)</text>
+      <rect x="0" y="12" width="140" height="36" class="input"/><text x="8" y="36" class="small">Tipo: Monto fijo</text>
+      <rect x="160" y="12" width="120" height="36" class="input"/><text x="168" y="36" class="small">Valor</text>
+      <text x="300" y="36" class="small">$2.00</text>
+
+      <rect x="0" y="64" width="140" height="36" class="input"/><text x="8" y="88" class="small">Tipo: Porcentaje</text>
+      <rect x="160" y="64" width="120" height="36" class="input"/><text x="168" y="88" class="small">10%</text>
+    </g>
+
+    <!-- Supplier / Season / Year -->
+    <g transform="translate(24,420)">
+      <text x="0" y="0" class="muted">Proveedor</text>
+      <rect x="0" y="8" width="320" height="36" class="input"/><text x="8" y="34" class="small">Seleccionar proveedor</text>
+
+      <text x="360" y="0" class="muted">Temporada</text>
+      <rect x="360" y="8" width="160" height="36" class="input"/><text x="368" y="34" class="small">Primavera / Verano</text>
+
+      <text x="540" y="0" class="muted">Año</text>
+      <rect x="540" y="8" width="120" height="36" class="input"/><text x="548" y="34" class="small">2026</text>
+    </g>
+
+    <!-- Tipo de variantes -->
+    <g transform="translate(24,500)">
+      <text x="0" y="0" class="muted">Tipo de variantes</text>
+      <g transform="translate(0,12)">
+        <rect x="0" y="20" width="160" height="36" class="input"/><text x="12" y="44" class="small">Producto simple</text>
+        <rect x="170" y="20" width="180" height="36" class="input"/><text x="182" y="44" class="small">Solo color</text>
+        <rect x="360" y="20" width="180" height="36" class="input"/><text x="372" y="44" class="small">Solo talle</text>
+        <rect x="550" y="20" width="220" height="36" class="input"/><text x="562" y="44" class="small">Color + Talle</text>
+      </g>
+      <text x="0" y="72" class="small">Si seleccionás "Producto simple" saltás Variantes y vas directo a Stock &amp; Imágenes.</text>
+    </g>
+
+    <!-- Image upload block (new) -->
+    <g transform="translate(24,600)">
+      <text x="0" y="0" class="muted">Imágenes (máx. 2)</text>
+      <text x="0" y="18" class="small">Subí 1 foto de modelo + 1 foto de perchero (vista de colores). Formatos: JPG/PNG/WebP. Max 5MB.</text>
+
+      <!-- Foto Modelo -->
+      <g transform="translate(0,40)">
+        <rect x="0" y="0" width="220" height="140" class="placeholder"/>
+        <text x="12" y="20" class="small">Foto modelo</text>
+        <text x="12" y="36" class="small">Tap para subir o arrastrar aquí</text>
+        <rect x="12" y="100" width="80" height="28" fill="#0b74ff" rx="6"/><text x="36" y="120" class="btn-text">Subir</text>
+        <rect x="104" y="100" width="80" height="28" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="126" y="120" class="small">Eliminar</text>
+        <rect x="12" y="70" width="196" height="24" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="18" y="88" class="small">Alt text: Modelo mostrando prenda</text>
+      </g>
+
+      <!-- Foto Perchero -->
+      <g transform="translate(260,40)">
+        <rect x="0" y="0" width="220" height="140" class="placeholder"/>
+        <text x="12" y="20" class="small">Foto perchero</text>
+        <text x="12" y="36" class="small">Tap para subir o arrastrar aquí</text>
+        <rect x="12" y="100" width="80" height="28" fill="#0b74ff" rx="6"/><text x="36" y="120" class="btn-text">Subir</text>
+        <rect x="104" y="100" width="80" height="28" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="126" y="120" class="small">Eliminar</text>
+        <rect x="12" y="70" width="196" height="24" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="18" y="88" class="small">Alt text: Perchero con colores disponibles</text>
+      </g>
+
+      <text x="500" y="140" class="small">Nota: la imagen perchero queda como imagen global del producto; si querés imágenes por color, lo hacés luego en Variantes.</text>
+    </g>
+
+    <!-- Buttons -->
+    <g transform="translate(24,780)">
+      <rect x="0" y="0" width="140" height="44" fill="#fff" stroke="#e6e9ef" rx="8"/><text x="46" y="30" class="muted">Volver</text>
+      <rect x="180" y="0" width="300" height="44" class="btn-primary" rx="8"/><text x="300" y="30" class="btn-text">Siguiente — Variantes</text>
+      <rect x="500" y="0" width="240" height="44" fill="#fff" stroke="#e6e9ef" rx="8"/><text x="600" y="30" class="muted">Guardar borrador</text>
+    </g>
+  </g>
+
+  <!-- Sidebar preview -->
+  <g transform="translate(820,160)">
+    <rect width="340" height="760" class="card"/>
+    <text x="20" y="28" class="label">Preview del producto</text>
+
+    <rect x="20" y="48" width="120" height="120" fill="#f3f4f6" stroke="#e6e9ef" rx="8"/>
+    <text x="152" y="80" class="small">SKU base:</text>
+    <text x="152" y="100" fill="#111827" font-family="Arial" font-size="14">CAM-VERDE-TEE</text>
+
+    <text x="20" y="188" class="small">Precio de costo</text>
+    <text x="20" y="208" fill="#111827" font-family="Arial" font-size="16">$12.00</text>
+
+    <text x="20" y="236" class="small">Precios derivados</text>
+    <rect x="20" y="248" width="300" height="30" class="input"/><text x="28" y="268" class="small">Mayorista: $16.20</text>
+    <rect x="20" y="286" width="300" height="30" class="input"/><text x="28" y="306" class="small">Feria: $15.00</text>
+    <rect x="20" y="324" width="300" height="30" class="input"/><text x="28" y="344" class="small">Liquidación: $13.80</text>
+
+    <text x="20" y="380" class="small">Descuento aplicado: 10% → Precio final: $10.80</text>
+
+    <text x="20" y="414" class="small">Categoría: Remeras</text>
+    <text x="20" y="436" class="small">Proveedor: Textiles SA</text>
+
+    <text x="20" y="468" class="small">Variantes</text>
+    <text x="20" y="488" class="small">Tipo seleccionado: Color + Talle</text>
+
+    <rect x="20" y="520" width="300" height="36" class="input"/><text x="28" y="544" class="small">Vas a crear: 12 variantes (3 colores × 4 talles)</text>
+
+    <text x="20" y="580" class="small">Imágenes subidas:</text>
+    <rect x="20" y="600" width="140" height="80" class="placeholder"/><text x="170" y="640" class="small">Foto modelo</text>
+    <rect x="180" y="600" width="140" height="80" class="placeholder"/><text x="170" y="676" class="small">Foto perchero</text>
+
+  </g>
+</svg>

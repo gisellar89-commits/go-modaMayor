@@ -1,0 +1,18 @@
+{
+  "name": "Camiseta Demo Postman",
+  "slug": "camiseta-demo-postman-001",
+  "description": "Una camiseta de prueba creada desde Postman",
+  "price": 1999,
+  "active": true,
+  "category_id": 1,
+  "subcategory_id": 1,
+  "image": "",
+  "variants": [
+    { "name": "Talla S", "sku": "CAM-S-PM-001", "additional_price": 0 },
+    { "name": "Talla M", "sku": "CAM-M-PM-001", "additional_price": 0 }
+  ],
+  "initial_stocks": [
+    { "location_id": 1, "quantity": 10 },
+    { "location_id": 2, "quantity": 5 }
+  ]
+}

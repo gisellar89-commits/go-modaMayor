@@ -1,0 +1,65 @@
+{
+  "info": {
+    "name": "go-modaMayor",
+    "_postman_id": "",
+    "description": "Colección básica para probar endpoints del proyecto go-modaMayor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Product Full",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{payload_product_full}}"
+        },
+        "url": {
+          "raw": "{{base_url}}/products/full",
+          "host": ["{{base_url}}"],
+          "path": ["products", "full"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/orders",
+          "host": ["{{base_url}}"],
+          "path": ["orders"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Cart",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/cart",
+          "host": ["{{base_url}}"],
+          "path": ["cart"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "payload_product_full", "value": "" }
+  ]
+}

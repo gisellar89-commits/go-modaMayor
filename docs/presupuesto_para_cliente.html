@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Presupuesto - Proyecto eCommerce</title>
+  <style>
+    :root{--accent:#0b63d6;--muted:#6b7280}
+    body{font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial; color:#111;margin:0;padding:0;background:#f6f7f9}
+    .page{max-width:900px;margin:18px auto;padding:28px;background:white;box-shadow:0 0 0 1px rgba(0,0,0,0.04)}
+    header{display:flex;justify-content:space-between;align-items:center}
+    .logo{width:200px;height:60px;border:1px dashed #e6e6e6;display:flex;align-items:center;justify-content:center;color:#888;font-weight:600}
+    h1{margin:0;font-size:20px}
+    .meta{font-size:13px;color:var(--muted)}
+    section{margin-top:18px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;border:1px solid #e9eef4;text-align:left}
+    th{background:#f8fbff;color:#0b3a66}
+    .right{text-align:right}
+    .total{font-weight:700;background:linear-gradient(90deg,#f0f8ff,#ffffff)}
+    footer{margin-top:26px;font-size:13px;color:#333}
+    @media print{body{background:#fff}.page{box-shadow:none;border:none;margin:0;padding:16mm}}
+    .small{font-size:13px;color:var(--muted)}
+    .section-title{font-size:15px;margin-bottom:6px;color:#0b3a66}
+    .options{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .card{border:1px solid #e6eef8;padding:12px;border-radius:6px;background:#fbfeff}
+    .card h3{margin:0 0 6px 0}
+    .muted{color:var(--muted)}
+    .signature{margin-top:20px;display:flex;justify-content:space-between;align-items:center}
+    .sig-line{width:60%;border-top:1px solid #ddd;padding-top:8px;color:#444}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>Propuesta económica — Desarrollo de Sitio eCommerce</h1>
+        <div class="meta">Fecha: 7 de noviembre de 2025</div>
+      </div>
+      <div class="logo">LOGO / Empresa</div>
+    </header>
+
+    <section>
+      <div class="section-title">Cliente</div>
+      <p class="small">Nombre: <strong>&lt;Nombre del Cliente&gt;</strong> &nbsp; | &nbsp; Proyecto: <strong>Plataforma eCommerce</strong> &nbsp; | &nbsp; Moneda: <strong>USD</strong></p>
+      <p class="small">Resumen: estimación orientativa basada en el repositorio entregado. Incluye diseño, frontend (Next.js), backend (Go), integraciones, DevOps y QA. Los importes pueden ajustarse tras reunión de alcance.</p>
+    </section>
+
+    <section>
+      <div class="section-title">Opciones de alcance y coste</div>
+      <div class="options">
+        <div class="card">
+          <h3>Básica — MVP</h3>
+          <p class="muted">Funcionalidades clave: catálogo, ficha producto, carrito, checkout básico, autenticación mínima.</p>
+          <p><strong>Rango</strong></p>
+          <p><strong>18,000 – 30,000 USD</strong></p>
+        </div>
+        <div class="card">
+          <h3>Intermedia — Recomendado</h3>
+          <p class="muted">MVP + panel admin, integraciones, tests automatizados, optimización UX.</p>
+          <p><strong>Rango</strong></p>
+          <p><strong>30,000 – 55,000 USD</strong></p>
+        </div>
+        <div class="card">
+          <h3>Completa — Producción</h3>
+          <p class="muted">Producción robusta, escalabilidad, SLA, monitoreo y pruebas de carga.</p>
+          <p><strong>Rango</strong></p>
+          <p><strong>55,000 – 100,000+ USD</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-title">Detalle ejemplo (Opción Intermedia)</div>
+      <table>
+        <thead>
+          <tr><th>Partida</th><th class="right">Costo estimado (USD)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Diseño y UX</td><td class="right">8,000</td></tr>
+          <tr><td>Frontend (Next.js)</td><td class="right">18,000</td></tr>
+          <tr><td>Backend (Go)</td><td class="right">15,000</td></tr>
+          <tr><td>Integraciones (pagos, envíos, email)</td><td class="right">4,000</td></tr>
+          <tr><td>DevOps - Setup</td><td class="right">3,500</td></tr>
+          <tr><td>QA y pruebas</td><td class="right">5,000</td></tr>
+          <tr><td>Gestión de proyecto</td><td class="right">5,000</td></tr>
+          <tr><td>Contingencia (12%)</td><td class="right">6,420</td></tr>
+        </tbody>
+        <tfoot>
+          <tr class="total"><td>Total aproximado</td><td class="right">64,920 USD</td></tr>
+        </tfoot>
+      </table>
+    </section>
+
+    <section>
+      <div class="section-title">Incluye</div>
+      <ul class="small">
+        <li>Wireframes, diseño UI (rondas: 2) y assets entregables.</li>
+        <li>Frontend completo (responsive) y pruebas básicas.</li>
+        <li>Backend (API, modelos, stock por ubicación, autenticación JWT).</li>
+        <li>Integraciones de pago (sandbox), envíos, email y analytics.</li>
+        <li>CI/CD, despliegue inicial, backups y monitorización básica.</li>
+        <li>Soporte post-lanzamiento 30 días para corrección de errores críticos.</li>
+      </ul>
+    </section>
+
+    <section>
+      <div class="section-title">Cronograma sugerido</div>
+      <table>
+        <thead><tr><th>Fase</th><th>Duración</th></tr></thead>
+        <tbody>
+          <tr><td>Kickoff & diseño</td><td>2–4 semanas</td></tr>
+          <tr><td>MVP</td><td>6–10 semanas</td></tr>
+          <tr><td>Integraciones & admin</td><td>4–6 semanas</td></tr>
+          <tr><td>Hardening & lanzamiento</td><td>2–4 semanas</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <div class="section-title">Hitos y pagos sugeridos</div>
+      <ol class="small">
+        <li>20% — Firma / inicio (depósito)</li>
+        <li>30% — Entrega MVP funcional</li>
+        <li>30% — Entrega integración completa y pruebas</li>
+        <li>20% — Go-live y cierre</li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="section-title">Supuestos y exclusiones</div>
+      <p class="small">Supuestos: alcance cerrado tras firma, cliente provee contenidos y acceso a APIs de terceros. Exclusiones habituales: ERP/legacy, fotografía profesional, soporte 24/7 y costes recurrentes de hosting (se pueden contratar aparte).</p>
+    </section>
+
+    <section>
+      <div class="section-title">Próximos pasos</div>
+      <ol class="small">
+        <li>Confirmar opción de alcance y moneda.</li>
+        <li>Reunión de alineación para fijar alcance definitivo.</li>
+        <li>Firma de acuerdo y pago del depósito para iniciar trabajo.</li>
+      </ol>
+      <div class="signature">
+        <div class="sig-line">Firma cliente: ________________________</div>
+        <div class="small">Contacto: &lt;Tu nombre / Empresa&gt; — email@empresa.com</div>
+      </div>
+    </section>
+
+    <footer class="small">
+      Documento preparado para presentación al cliente. Revisa supuestos y adapta cifras según tarifa/hora acordada.
+    </footer>
+  </div>
+</body>
+</html>

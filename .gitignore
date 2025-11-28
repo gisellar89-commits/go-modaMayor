@@ -1,0 +1,33 @@
+# Go
+bin/
+*.exe
+*.log
+*.out
+*.test
+
+# Go build cache
+**/vendor/
+**/*.exe
+
+# Node / Next (front)
+front/node_modules/
+front/.next/
+front/.turbo/
+front/.env.local
+front/.env.development.local
+front/.env.production.local
+front/.env.test.local
+
+# General
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+.env
+uploads/
+
+# Database (si tenés backups o dumps locales)
+*.db
+*.sqlite
+*.sqlite3

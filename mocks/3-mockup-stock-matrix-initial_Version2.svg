@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <style>
+    .bg{fill:#f6f8fb}
+    .card{fill:#fff;stroke:#e6e9ef;stroke-width:1;rx:10;ry:10}
+    .title{fill:#0f172a;font-family:Arial, sans-serif;font-size:20px;font-weight:700}
+    .muted{fill:#6b7280;font-family:Arial, sans-serif;font-size:13px}
+    .label{fill:#111827;font-family:Arial, sans-serif;font-size:14px;font-weight:700}
+    .cell{fill:#fff;stroke:#e6e9ef;rx:6}
+    .cell-empty{fill:#fff7f6;stroke:#fee2e2;rx:6}
+    .swatch{stroke:#cbd5e1;stroke-width:1;rx:6;ry:6}
+    .btn{fill:#0b74ff;rx:6}
+    .btn-text{fill:#fff;font-family:Arial, sans-serif;font-size:13px;font-weight:700}
+    .input{fill:#fbfdff;stroke:#e6e9ef;rx:6}
+    .small{font-family:Arial, sans-serif;font-size:12px;fill:#6b7280}
+    .badge{fill:#f0f9ff;stroke:#dbefff;rx:8}
+  </style>
+
+  <rect width="1400" height="900" class="bg"/>
+
+  <!-- Header -->
+  <text x="40" y="48" class="title">Carga inicial de stock — Matriz Variantes × Ubicaciones</text>
+  <text x="40" y="74" class="muted">Producto: Camiseta Verde — SKU base: CAM-VERDE-TEE — Precio: $19.99 (aplica a todas las variantes)</text>
+
+  <!-- Controls card -->
+  <g transform="translate(40,110)">
+    <rect width="1320" height="88" class="card"/>
+    <text x="20" y="36" class="muted">Modo recomendado: Matriz (editar cantidades por variante y por ubicación). También podés usar "Por ubicación" o "Importar CSV".</text>
+
+    <g transform="translate(20,44)">
+      <rect x="0" y="48" width="220" height="36" class="input"/><text x="12" y="72" class="small">Aplicar defaults: Warehouse=50, Store A=10, Store B=5</text>
+      <rect x="260" y="48" width="140" height="36" class="btn"/><text x="300" y="76" class="btn-text">Aplicar</text>
+      <rect x="420" y="48" width="140" height="36" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="444" y="76" class="small">Importar CSV</text>
+      <rect x="580" y="48" width="220" height="36" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="604" y="76" class="small">Vista por ubicación</text>
+      <rect x="820" y="48" width="220" height="36" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="844" y="76" class="small">Deshacer última operación</text>
+
+      <g transform="translate(1100,48)">
+        <rect x="0" y="0" width="220" height="36" class="btn"/><text x="60" y="24" class="btn-text">Guardar cambios</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Matrix card -->
+  <g transform="translate(40,218)">
+    <rect width="960" height="640" class="card"/>
+    <text x="20" y="34" class="label">Matriz — editar cantidades por celda</text>
+    <text x="20" y="56" class="muted">Filas = Variantes (Color + Talle). Columnas = Ubicaciones. Total por variante al final.</text>
+
+    <!-- Column headers: locations -->
+    <g transform="translate(140,92)">
+      <rect x="0" y="0" width="160" height="40" fill="#f3f4f6" stroke="#e6e9ef" rx="6"/><text x="20" y="26" class="small">WAREHOUSE</text>
+      <rect x="160" y="0" width="160" height="40" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="200" y="26" class="small">STORE_A</text>
+      <rect x="320" y="0" width="160" height="40" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="370" y="26" class="small">STORE_B</text>
+      <rect x="480" y="0" width="120" height="40" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="490" y="26" class="small">Total</text>
+    </g>
+
+    <!-- Rows: example variants -->
+    <g transform="translate(20,152)" font-family="Arial">
+      <!-- Row header column (variant info) -->
+      <g transform="translate(0,0)">
+        <rect x="0" y="0" width="120" height="56" class="cell"/><text x="10" y="20" fill="#111827" font-size="13">Negro</text><text x="10" y="40" class="small">XS</text>
+        <!-- Row 1 cells -->
+        <g transform="translate(140,0)">
+          <rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">50</text>
+        </g>
+        <g transform="translate(300,0)">
+          <rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">10</text>
+        </g>
+        <g transform="translate(460,0)">
+          <rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">5</text>
+        </g>
+        <g transform="translate(620,0)">
+          <rect x="0" y="0" width="120" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">65</text>
+        </g>
+      </g>
+
+      <!-- Row 2 -->
+      <g transform="translate(0,70)">
+        <rect x="0" y="0" width="120" height="56" class="cell"/><text x="10" y="20" fill="#111827" font-size="13">Azul</text><text x="10" y="40" class="small">S</text>
+        <g transform="translate(140,0)"><rect x="0" y="0" width="160" height="56" class="cell-empty"/><text x="12" y="34" class="small">0</text></g>
+        <g transform="translate(300,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">8</text></g>
+        <g transform="translate(460,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">2</text></g>
+        <g transform="translate(620,0)"><rect x="0" y="0" width="120" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">10</text></g>
+      </g>
+
+      <!-- Row 3 -->
+      <g transform="translate(0,140)">
+        <rect x="0" y="0" width="120" height="56" class="cell"/><text x="10" y="20" fill="#111827" font-size="13">Rojo</text><text x="10" y="40" class="small">M</text>
+        <g transform="translate(140,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">30</text></g>
+        <g transform="translate(300,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">5</text></g>
+        <g transform="translate(460,0)"><rect x="0" y="0" width="160" height="56" class="cell-empty"/><text x="12" y="34" class="small">0</text></g>
+        <g transform="translate(620,0)"><rect x="0" y="0" width="120" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">35</text></g>
+      </g>
+
+      <!-- Row 4 (example variant not created) -->
+      <g transform="translate(0,210)">
+        <rect x="0" y="0" width="120" height="56" class="cell"/><text x="10" y="20" fill="#111827" font-size="13">Negro</text><text x="10" y="40" class="small">M</text>
+        <g transform="translate(140,0)"><rect x="0" y="0" width="160" height="56" class="cell-empty"/><text x="12" y="34" class="small">No creada</text></g>
+        <g transform="translate(300,0)"><rect x="0" y="0" width="160" height="56" class="cell-empty"/><text x="12" y="34" class="small">No creada</text></g>
+        <g transform="translate(460,0)"><rect x="0" y="0" width="160" height="56" class="cell-empty"/><text x="12" y="34" class="small">No creada</text></g>
+        <g transform="translate(620,0)"><rect x="0" y="0" width="120" height="56" class="cell-empty"/><text x="12" y="34" class="small">—</text></g>
+      </g>
+    </g>
+
+    <!-- Footer totals row -->
+    <g transform="translate(20,420)">
+      <rect x="0" y="0" width="120" height="56" class="cell"/><text x="10" y="34" class="muted">Totales</text>
+      <g transform="translate(140,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">80</text></g>
+      <g transform="translate(300,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">23</text></g>
+      <g transform="translate(460,0)"><rect x="0" y="0" width="160" height="56" class="cell"/><text x="12" y="34" fill="#111827" font-size="14">7</text></g>
+      <g transform="translate(620,0)"><rect x="0" y="0" width="120" height="56" class="badge"/><text x="12" y="34" fill="#0f172a" font-size="14">110</text></g>
+    </g>
+
+    <!-- Help note -->
+    <text x="20" y="500" class="small">Tips: click en una celda para abrir detalle (editar qty por ubicación, ver reserved, transferir). Seleccioná filas para aplicar defaults rápidamente.</text>
+  </g>
+
+  <!-- Right panel: selected list & quick bulk actions -->
+  <g transform="translate(1030,218)">
+    <rect width="320" height="300" class="card"/>
+    <text x="20" y="34" class="label">Acciones rápidas</text>
+    <text x="20" y="56" class="small">Seleccionadas: 3</text>
+
+    <g transform="translate(20,80)">
+      <rect x="0" y="0" width="280" height="40" fill="#fff" stroke="#e6e9ef" rx="6"/><text x="12" y="26" class="small">Aplicar Warehouse =</text>
+      <rect x="180" y="6" width="80" height="28" class="input"/><text x="208" y="26" class="small">50</text>
+      <rect x="0" y="56" width="280" height="40" class="btn" rx="6"/><text x="86" y="84" class="btn-text">Aplicar a seleccionadas</text>
+    </g>
+
+    <g transform="translate(20,140)">
+      <rect x="0" y="0" width="280" height="120" fill="#fff" stroke="#e6e9ef" rx="6"/>
+      <text x="12" y="24" class="muted">Preview cambios (por variante)</text>
+      <text x="12" y="48" class="small">Negro / XS — W:50 A:10 B:5</text>
+      <text x="12" y="72" class="small">Azul / S — W:0 A:8 B:2</text>
+      <text x="12" y="96" class="small">Rojo / M — W:30 A:5 B:0</text>
+    </g>
+  </g>
+</svg>
