@@ -149,15 +149,15 @@ export default function SubcategoryAdmin() {
 
   return (
     <section className="p-4 max-w-lg mx-auto">
-      <h2 className="text-xl font-bold mb-4">Crear subcategoría</h2>
+      <h2 className="text-xl font-bold mb-4 text-gray-900">Crear subcategoría</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required className="border px-2 py-1">
+        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required className="border px-2 py-1 text-gray-900">
           <option value="">Selecciona categoría</option>
           {categories.filter(cat => (cat.id || cat.ID) && Number(cat.id || cat.ID) > 0).map(cat => (
             <option key={String(cat.id || cat.ID)} value={cat.id || cat.ID}>{cat.name}</option>
           ))}
         </select>
-        <input type="text" placeholder="Nombre de subcategoría" value={name} onChange={e => setName(e.target.value)} required className="border px-2 py-1" />
+        <input type="text" placeholder="Nombre de subcategoría" value={name} onChange={e => setName(e.target.value)} required className="border px-2 py-1 text-gray-900 placeholder:text-gray-400" />
         <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Crear subcategoría</button>
       </form>
       {error && <div className="text-red-500 mt-2">{error}</div>}
@@ -185,7 +185,7 @@ export default function SubcategoryAdmin() {
         </div>
       )}
       
-      <h3 className="text-lg font-semibold mb-2 mt-6">Listado de subcategorías existentes</h3>
+      <h3 className="text-lg font-semibold mb-2 mt-6 text-gray-900">Listado de subcategorías existentes</h3>
       <p className="text-sm text-gray-600 mb-2">Selecciona una categoría arriba para ver sus subcategorías</p>
       
       {errorList && <div className="text-red-500 mt-2">{errorList}</div>}
@@ -208,7 +208,7 @@ export default function SubcategoryAdmin() {
                       type="text" 
                       value={editName} 
                       onChange={(e) => setEditName(e.target.value)}
-                      className="border px-2 py-1 rounded"
+                      className="border px-2 py-1 rounded text-gray-900 placeholder:text-gray-400"
                       placeholder="Nombre de subcategoría"
                     />
                     <div className="flex gap-2">
@@ -232,7 +232,7 @@ export default function SubcategoryAdmin() {
             
             return (
               <li key={sub.id || sub.ID} className="p-2 flex items-center justify-between hover:bg-gray-50">
-                <span className="font-medium">{sub.name}</span>
+                <span className="font-medium text-gray-900">{sub.name}</span>
                 <div className="flex gap-2">
                   <button 
                     className="p-1 hover:bg-blue-50 rounded" 

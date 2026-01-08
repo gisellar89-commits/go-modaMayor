@@ -15,6 +15,8 @@ import (
 	"go-modaMayor/internal/settings"
 	"go-modaMayor/internal/user"
 	"go-modaMayor/routes"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -112,10 +114,15 @@ func main() {
 	var admin user.User
 	db.Where("role = ?", "admin").First(&admin)
 	if admin.ID == 0 {
+		// Hashear la contraseña antes de guardarla
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+		if err != nil {
+			panic("Error al hashear contraseña del admin: " + err.Error())
+		}
 		admin = user.User{
 			Name:     "Administrador",
 			Email:    "admin@modamayor.com",
-			Password: "admin123", // Cambia esto luego por seguridad
+			Password: string(hashedPassword),
 			Role:     "admin",
 		}
 		db.Create(&admin)
@@ -129,6 +136,9 @@ func main() {
 
 	// Start background snapshotter (runs every hour)
 	order.StartBestsellerSnapshotter(time.Hour)
+
+	// Start cart expiration job (runs every 2 hours)
+	cart.StartCartExpirationJob(2 * time.Hour)
 
 	router.Run(":8080")
 }

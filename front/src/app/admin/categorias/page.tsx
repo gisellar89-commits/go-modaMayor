@@ -112,22 +112,22 @@ export default function CategoriasAdmin() {
 
   return (
     <section className="p-4 max-w-lg mx-auto">
-      <h2 className="text-xl font-bold mb-4">Administrar categorías</h2>
+      <h2 className="text-xl font-bold mb-4 text-gray-900">Administrar categorías</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mb-6">
-        <input type="text" placeholder="Nombre de categoría" value={name} onChange={e => setName(e.target.value)} required className="border px-2 py-1" />
-        <input type="text" placeholder="Descripción" value={description} onChange={e => setDescription(e.target.value)} className="border px-2 py-1" />
+        <input type="text" placeholder="Nombre de categoría" value={name} onChange={e => setName(e.target.value)} required className="border px-2 py-1 text-gray-900 placeholder:text-gray-400" />
+        <input type="text" placeholder="Descripción" value={description} onChange={e => setDescription(e.target.value)} className="border px-2 py-1 text-gray-900 placeholder:text-gray-400" />
         <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Crear categoría</button>
       </form>
       {error && <div className="text-red-500 mt-2">{error}</div>}
       {success && <div className="text-green-600 mt-2">{success}</div>}
-      <h3 className="text-lg font-semibold mb-2">Listado de categorías</h3>
+      <h3 className="text-lg font-semibold mb-2 text-gray-900">Listado de categorías</h3>
       <ul className="border rounded divide-y">
         {categories.map(cat => (
           <li key={cat.id || cat.ID} className="p-2 flex items-center justify-between gap-1">
             {editId === (cat.id || cat.ID) ? (
               <form onSubmit={handleEditSubmit} className="flex items-center gap-2 w-full">
-                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} required className="border px-2 py-1" />
-                <input type="text" value={editDescription} onChange={e => setEditDescription(e.target.value)} className="border px-2 py-1" />
+                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} required className="border px-2 py-1 text-gray-900" />
+                <input type="text" value={editDescription} onChange={e => setEditDescription(e.target.value)} className="border px-2 py-1 text-gray-900" />
                 <div className="flex gap-2 ml-auto">
                   <button type="submit" className="bg-green-600 text-white px-2 py-1 rounded">Guardar</button>
                   <button type="button" className="bg-gray-400 text-white px-2 py-1 rounded" onClick={() => setEditId(null)}>Cancelar</button>
@@ -136,7 +136,7 @@ export default function CategoriasAdmin() {
             ) : (
               <>
                 <div className="flex flex-col">
-                  <span className="font-bold">{cat.name}</span>
+                  <span className="font-bold text-gray-900">{cat.name}</span>
                   <span className="text-sm text-gray-600">{cat.description}</span>
                 </div>
                 <div className="flex gap-2 ml-auto">

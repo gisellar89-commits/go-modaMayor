@@ -18,7 +18,10 @@ export default function OrderRow({ order, statuses, onChangeStatus, onOpen, onRe
 
   return (
     <tr className="hover:bg-gray-50">
-      <td className="px-2 py-1 border">{order.ID ?? order.id}</td>
+      <td className="px-2 py-1 border font-semibold">#{order.ID ?? order.id}</td>
+      <td className="px-2 py-1 border text-blue-600">
+        {(order as any).cart_id ? `#${(order as any).cart_id}` : '-'}
+      </td>
       <td className="px-2 py-1 border">{order.User?.name ?? order.User?.email ?? `#${order.user_id}`}</td>
       <td className="px-2 py-1 border">{order.status}</td>
       <td className="px-2 py-1 border">${(order.total ?? 0).toFixed(2)}</td>

@@ -38,7 +38,7 @@ export default function EditarProductoPage() {
 
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
+      const timer = setTimeout(() => setError(null), 10000);
       return () => clearTimeout(timer);
     }
   }, [error]);
@@ -378,7 +378,7 @@ export default function EditarProductoPage() {
                   value={product.name || ''} 
                   onChange={e => setProduct({ ...product, name: e.target.value })} 
                   required 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400" 
                 />
               </div>
               <div>
@@ -387,7 +387,7 @@ export default function EditarProductoPage() {
                   type="text" 
                   value={product.image_url || ''} 
                   onChange={e => setProduct({ ...product, image_url: e.target.value })} 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400" 
                 />
               </div>
             </div>
@@ -398,7 +398,7 @@ export default function EditarProductoPage() {
                 value={product.description || ''} 
                 onChange={e => setProduct({ ...product, description: e.target.value })} 
                 rows={3}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400" 
               />
             </div>
 
@@ -612,7 +612,7 @@ export default function EditarProductoPage() {
                     }
                   }} 
                   required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 >
                   <option value="">Seleccionar...</option>
                   {categories.map((c: any) => <option key={c.id || c.ID} value={c.id || c.ID}>{c.name}</option>)}
@@ -623,7 +623,7 @@ export default function EditarProductoPage() {
                 <select 
                   value={product.subcategory_id ?? ''} 
                   onChange={e => setProduct({ ...product, subcategory_id: e.target.value ? Number(e.target.value) : null })} 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   disabled={subcategories.length === 0}
                 >
                   <option value="">Ninguna</option>
@@ -635,7 +635,7 @@ export default function EditarProductoPage() {
                 <select 
                   value={product.supplier_id ?? ''} 
                   onChange={e => setProduct({ ...product, supplier_id: e.target.value ? Number(e.target.value) : null })} 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 >
                   <option value="">Ninguno</option>
                   {suppliers.map((s: any) => <option key={s.ID} value={s.ID}>{s.name}</option>)}
@@ -649,7 +649,7 @@ export default function EditarProductoPage() {
                 <select 
                   value={product.season_id ?? ''} 
                   onChange={e => setProduct({ ...product, season_id: e.target.value ? Number(e.target.value) : null })} 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 >
                   <option value="">Ninguna</option>
                   {seasons.map((s: any) => (
@@ -669,7 +669,7 @@ export default function EditarProductoPage() {
                   value={product.year ?? ''} 
                   onChange={e => setProduct({ ...product, year: e.target.value ? Number(e.target.value) : '' })} 
                   placeholder="2025"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400" 
                 />
               </div>
               <div>
@@ -677,7 +677,7 @@ export default function EditarProductoPage() {
                 <select 
                   value={product.size_type_id ?? ''} 
                   onChange={e => setProduct({ ...product, size_type_id: e.target.value ? Number(e.target.value) : null })} 
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   disabled={false}
                   title="Selecciona el tipo de talle que coincida con las variantes existentes"
                 >
@@ -708,7 +708,7 @@ export default function EditarProductoPage() {
                     onChange={(e) => setProduct({ ...product, is_new_arrival: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Nuevo Ingreso</span>
+                  <span className="text-sm text-gray-900">Nuevo Ingreso</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -717,7 +717,7 @@ export default function EditarProductoPage() {
                     onChange={(e) => setProduct({ ...product, is_featured: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Destacado</span>
+                  <span className="text-sm text-gray-900">Destacado</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -726,7 +726,7 @@ export default function EditarProductoPage() {
                     onChange={(e) => setProduct({ ...product, is_offer: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">En Oferta</span>
+                  <span className="text-sm text-gray-900">En Oferta</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -735,7 +735,7 @@ export default function EditarProductoPage() {
                     onChange={(e) => setProduct({ ...product, is_trending: e.target.checked })}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Tendencia</span>
+                  <span className="text-sm text-gray-900">Tendencia</span>
                 </label>
               </div>
             </div>
@@ -752,7 +752,7 @@ export default function EditarProductoPage() {
                     value={product.cost_price ?? 0} 
                     onChange={e => setProduct({ ...product, cost_price: Number(e.target.value) })} 
                     required
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" 
                   />
                 </div>
                 <div>
@@ -764,7 +764,7 @@ export default function EditarProductoPage() {
                       value={product.total_stock ?? ''} 
                       onChange={e => setProduct({ ...product, total_stock: e.target.value ? Number(e.target.value) : '' })} 
                       placeholder="Opcional"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400" 
                     />
                     <span className="text-sm text-gray-600 whitespace-nowrap">Actual: {calculatedTotalStock}</span>
                   </div>
@@ -777,7 +777,7 @@ export default function EditarProductoPage() {
                   <select 
                     value={product.discount_type || 'none'} 
                     onChange={e => setProduct({ ...product, discount_type: e.target.value })} 
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   >
                     <option value="none">Ninguno</option>
                     <option value="percent">Porcentaje (%)</option>
@@ -792,7 +792,7 @@ export default function EditarProductoPage() {
                     step="0.01" 
                     value={product.discount_value ?? 0} 
                     onChange={e => setProduct({ ...product, discount_value: Number(e.target.value) })} 
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" 
                   />
                 </div>
               </div>
@@ -914,7 +914,7 @@ export default function EditarProductoPage() {
                           className="w-6 h-6 rounded border border-gray-300"
                           style={{ backgroundColor: c.hex ?? '#ccc' }}
                         />
-                        <span className="text-sm font-medium">{c.name ?? c.key}</span>
+                        <span className="text-sm font-medium text-gray-900">{c.name ?? c.key}</span>
                         {isUsed && (
                           <span className="text-xs text-blue-600 ml-1">✓</span>
                         )}
@@ -938,7 +938,7 @@ export default function EditarProductoPage() {
                         key={size}
                         className="border bg-blue-100 border-blue-300 px-3 py-2 rounded-md"
                       >
-                        <span className="text-sm font-medium">{size}</span>
+                        <span className="text-sm font-medium text-gray-900">{size}</span>
                       </div>
                     ));
                   })()}
@@ -951,10 +951,10 @@ export default function EditarProductoPage() {
               <table className="w-full border-collapse border border-gray-300">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Color</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">Talle</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold">SKU</th>
-                    <th className="border border-gray-300 px-4 py-2 text-center text-sm font-semibold">Acciones</th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-900">Color</th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-900">Talle</th>
+                    <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-900">SKU</th>
+                    <th className="border border-gray-300 px-4 py-2 text-center text-sm font-semibold text-gray-900">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1011,7 +1011,7 @@ export default function EditarProductoPage() {
                                 setVariants(updated);
                               }}
                               placeholder="Negro"
-                              className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                              className="border border-gray-300 rounded px-2 py-1 text-sm w-full text-gray-900 placeholder:text-gray-400"
                               disabled={!isNew}
                             />
                           </div>
@@ -1026,7 +1026,7 @@ export default function EditarProductoPage() {
                               setVariants(updated);
                             }}
                             placeholder="M"
-                            className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                            className="border border-gray-300 rounded px-2 py-1 text-sm w-full text-gray-900 placeholder:text-gray-400"
                             disabled={!isNew}
                           />
                         </td>
@@ -1040,7 +1040,7 @@ export default function EditarProductoPage() {
                               setVariants(updated);
                             }}
                             placeholder="SKU-001"
-                            className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                            className="border border-gray-300 rounded px-2 py-1 text-sm w-full text-gray-900 placeholder:text-gray-400"
                             disabled={!isNew}
                           />
                         </td>
@@ -1150,10 +1150,9 @@ export default function EditarProductoPage() {
                     const stocksPayload: any[] = [];
                     locationStocks.forEach((ls: any) => {
                       stocksPayload.push({
-                        product_id: ls.product_id,
                         variant_id: ls.variant_id || null,
                         location: ls.location,
-                        stock: ls.stock || 0,
+                        quantity: ls.stock || 0,
                       });
                     });
 
@@ -1166,7 +1165,10 @@ export default function EditarProductoPage() {
                       body: JSON.stringify({ stocks: stocksPayload }),
                     });
 
-                    if (!res.ok) throw new Error('Error guardando stocks');
+                    if (!res.ok) {
+                      const errorData = await res.json();
+                      throw new Error(errorData.error || 'Error guardando stocks');
+                    }
                     setSuccess('Stocks actualizados exitosamente');
                     
                     // Recargar stocks
@@ -1176,6 +1178,7 @@ export default function EditarProductoPage() {
                       .then(r => r.ok ? r.json() : [])
                       .then(stocks => setLocationStocks(Array.isArray(stocks) ? stocks : []));
                   } catch (e: any) {
+                    console.error('Error al guardar stocks:', e);
                     setError(e.message);
                   }
                 }}
@@ -1207,12 +1210,12 @@ export default function EditarProductoPage() {
                 <table className="w-full border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold">Color</th>
-                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold">Talle</th>
-                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold">Depósito</th>
-                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold">Mendoza</th>
-                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold">Salta</th>
-                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold bg-blue-50">Total</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Color</th>
+                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Talle</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Depósito</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Mendoza</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Salta</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900 bg-blue-50">Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1272,10 +1275,10 @@ export default function EditarProductoPage() {
                                 style={{ backgroundColor: colorHex }}
                                 title={variant.color}
                               />
-                              <span className="font-medium">{variant.color}</span>
+                              <span className="font-medium text-gray-900">{variant.color}</span>
                             </div>
                           </td>
-                          <td className="border border-gray-300 px-4 py-3 font-medium">
+                          <td className="border border-gray-300 px-4 py-3 font-medium text-gray-900">
                             {variant.size}
                           </td>
                           <td className="border border-gray-300 px-2 py-2 text-center">
@@ -1284,7 +1287,7 @@ export default function EditarProductoPage() {
                               min={0}
                               value={deposito}
                               onChange={(e) => setStockForLocation('deposito', Number(e.target.value) || 0)}
-                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </td>
                           <td className="border border-gray-300 px-2 py-2 text-center">
@@ -1293,7 +1296,7 @@ export default function EditarProductoPage() {
                               min={0}
                               value={mendoza}
                               onChange={(e) => setStockForLocation('mendoza', Number(e.target.value) || 0)}
-                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </td>
                           <td className="border border-gray-300 px-2 py-2 text-center">
@@ -1302,7 +1305,7 @@ export default function EditarProductoPage() {
                               min={0}
                               value={salta}
                               onChange={(e) => setStockForLocation('salta', Number(e.target.value) || 0)}
-                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-20 border border-gray-300 rounded px-2 py-1 text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </td>
                           <td className="border border-gray-300 px-4 py-3 text-center bg-blue-50 font-bold text-blue-900">
@@ -1313,24 +1316,24 @@ export default function EditarProductoPage() {
                     })}
                     {/* Fila de totales */}
                     <tr className="bg-gray-200 font-bold">
-                      <td colSpan={2} className="border border-gray-300 px-4 py-3 text-right">
+                      <td colSpan={2} className="border border-gray-300 px-4 py-3 text-right text-gray-900">
                         TOTAL POR UBICACIÓN:
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">
                         {variants.reduce((sum: number, v: any) => {
                           const variantId = v.id ?? v.ID;
                           const stock = locationStocks.find((ls: any) => ls.variant_id === variantId && ls.location === 'deposito');
                           return sum + (stock?.stock || 0);
                         }, 0)}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">
                         {variants.reduce((sum: number, v: any) => {
                           const variantId = v.id ?? v.ID;
                           const stock = locationStocks.find((ls: any) => ls.variant_id === variantId && ls.location === 'mendoza');
                           return sum + (stock?.stock || 0);
                         }, 0)}
                       </td>
-                      <td className="border border-gray-300 px-4 py-3 text-center">
+                      <td className="border border-gray-300 px-4 py-3 text-center text-gray-900">
                         {variants.reduce((sum: number, v: any) => {
                           const variantId = v.id ?? v.ID;
                           const stock = locationStocks.find((ls: any) => ls.variant_id === variantId && ls.location === 'salta');

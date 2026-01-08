@@ -29,6 +29,27 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
+// Middleware opcional: intenta autenticar pero no rechaza si no hay token
+// Usado para endpoints que funcionan con o sin autenticación
+func OptionalAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header != "" && strings.HasPrefix(header, "Bearer ") {
+			tokenStr := strings.TrimPrefix(header, "Bearer ")
+			claims, err := ValidateJWT(tokenStr)
+			if err == nil {
+				// Token válido: guardar claims en contexto
+				c.Set("user_id", claims.UserID)
+				c.Set("user_email", claims.Email)
+				c.Set("user_role", claims.Role)
+			}
+			// Si el token es inválido, simplemente continuar sin autenticación
+		}
+		// Continuar sin importar si hay token o no
+		c.Next()
+	}
+}
+
 // Middleware para requerir un rol específico
 func RequireRole(role string) gin.HandlerFunc {
 	return func(c *gin.Context) {

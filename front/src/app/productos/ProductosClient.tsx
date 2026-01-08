@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "../../components/ProductCard";
 import FilterCheckbox from "../../components/FilterCheckbox";
@@ -19,6 +19,9 @@ export default function ProductosClient() {
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
   const [selectedSubcategory, setSelectedSubcategory] = useState<number | undefined>(undefined);
   const [subcategories, setSubcategories] = useState<any[]>([]);
+  
+  // Track if we've initialized from URL params
+  const initializedFromParams = useRef(false);
   
   // Estados para filtros móviles
   const [mobileFilterOpen, setMobileFilterOpen] = useState<string | null>(null);
@@ -55,18 +58,30 @@ export default function ProductosClient() {
 
   const searchParams = useSearchParams();
 
-  // Initialize filters from query params so the UI highlights the proper category/subcategory
+  // Initialize filters from query params - runs once on mount
   useEffect(() => {
-    if (!searchParams) return;
-    const cat = searchParams.get("category");
-    const sub = searchParams.get("subcategory");
-    const q = searchParams.get("search");
-    if (cat) setSelectedCategory(Number(cat));
-    if (sub) setSelectedSubcategory(Number(sub));
-    if (q !== null && q !== undefined) setSearch(q);
+    if (initializedFromParams.current) return;
+    
+    if (searchParams) {
+      const cat = searchParams.get("category");
+      const sub = searchParams.get("subcategory");
+      const q = searchParams.get("search");
+      
+      // Set all states at once before marking as initialized
+      if (cat) setSelectedCategory(Number(cat));
+      if (sub) setSelectedSubcategory(Number(sub));
+      if (q !== null && q !== undefined) setSearch(q);
+    }
+    
+    // Mark as initialized whether we had params or not
+    initializedFromParams.current = true;
   }, [searchParams]);
 
+  // Fetch products whenever filters change
   useEffect(() => {
+    // Don't fetch until we've initialized from params
+    if (!initializedFromParams.current) return;
+    
     setLoading(true);
     fetchProductsPaged({ search, page, limit, category: selectedCategory, subcategory: selectedSubcategory })
       .then((res) => {
@@ -358,7 +373,7 @@ export default function ProductosClient() {
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
             placeholder="Buscar productos..." 
-            className="input-themed flex-1"
+            className="input-themed flex-1 text-gray-900 placeholder:text-gray-400"
           />
           <button
             onClick={() => setMobileFilterOpen('panel')}
@@ -691,25 +706,25 @@ export default function ProductosClient() {
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
               placeholder="Buscar productos..." 
-              className="input-themed w-full"
+              className="input-themed w-full text-gray-900 placeholder:text-gray-400"
             />
           </div>
 
           <div className="mb-6">
             <h3 className="text-lg font-bold mb-3 bg-gradient-to-r from-yellow-500 to-pink-500 bg-clip-text text-transparent">Categorías</h3>
             <ul className="text-sm space-y-1">
-              <li className={`p-2 rounded-lg cursor-pointer transition-all ${selectedCategory === undefined ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => { setSelectedCategory(undefined); setSelectedSubcategory(undefined); }}>Todas</li>
+              <li className={`p-2 rounded-lg cursor-pointer transition-all text-gray-900 ${selectedCategory === undefined ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => { setSelectedCategory(undefined); setSelectedSubcategory(undefined); }}>Todas</li>
               {categories.map((c) => (
-                <li key={c.id ?? c.ID} className={`p-2 rounded-lg cursor-pointer transition-all ${selectedCategory === (c.id ?? c.ID) ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => { setSelectedCategory(c.id ?? c.ID); setSelectedSubcategory(undefined); }}>{c.name}</li>
+                <li key={c.id ?? c.ID} className={`p-2 rounded-lg cursor-pointer transition-all text-gray-900 ${selectedCategory === (c.id ?? c.ID) ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => { setSelectedCategory(c.id ?? c.ID); setSelectedSubcategory(undefined); }}>{c.name}</li>
               ))}
             </ul>
             {selectedCategory && subcategories.length > 0 && (
               <div className="mt-4">
                 <h4 className="text-base font-semibold mb-2 text-pink-600">Subcategorías</h4>
                 <ul className="text-sm space-y-1">
-                  <li className={`p-2 rounded-lg cursor-pointer transition-all ${selectedSubcategory === undefined ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => setSelectedSubcategory(undefined)}>Todas</li>
+                  <li className={`p-2 rounded-lg cursor-pointer transition-all text-gray-900 ${selectedSubcategory === undefined ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => setSelectedSubcategory(undefined)}>Todas</li>
                   {subcategories.map((s) => (
-                    <li key={s.id ?? s.ID} className={`p-2 rounded-lg cursor-pointer transition-all ${selectedSubcategory === (s.id ?? s.ID) ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => setSelectedSubcategory(s.id ?? s.ID)}>{s.name}</li>
+                    <li key={s.id ?? s.ID} className={`p-2 rounded-lg cursor-pointer transition-all text-gray-900 ${selectedSubcategory === (s.id ?? s.ID) ? 'border-l-4 border-pink-500 pl-3 font-semibold bg-gradient-to-r from-yellow-50 to-pink-50' : 'hover:bg-gray-50'}`} onClick={() => setSelectedSubcategory(s.id ?? s.ID)}>{s.name}</li>
                   ))}
                 </ul>
               </div>
@@ -736,7 +751,7 @@ export default function ProductosClient() {
                       placeholder="Desde"
                       value={minPrice ?? ''}
                       onChange={(e) => setMinPrice(e.target.value === '' ? null : e.target.value)}
-                      className="input-themed w-1/2 text-sm"
+                      className="input-themed w-1/2 text-sm text-gray-900 placeholder:text-gray-400"
                     />
                     <input
                       type="number"
@@ -744,7 +759,7 @@ export default function ProductosClient() {
                       placeholder="Hasta"
                       value={maxPrice ?? ''}
                       onChange={(e) => setMaxPrice(e.target.value === '' ? null : e.target.value)}
-                      className="input-themed w-1/2 text-sm"
+                      className="input-themed w-1/2 text-sm text-gray-900 placeholder:text-gray-400"
                     />
                   </div>
                 </div>

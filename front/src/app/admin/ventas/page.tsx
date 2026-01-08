@@ -8,8 +8,12 @@ import SalesList from "./components/SalesList";
 import OrderDetailModal from "./components/OrderDetailModal";
 import { Toaster } from "react-hot-toast";
 import ConfirmDialog from "./components/ConfirmDialog";
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function AdminVentasPage() {
+  const auth = useAuth();
+  const role = auth?.user?.role;
+  const userId = auth?.user?.id;
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [modalOrder, setModalOrder] = useState<any | null>(null);
@@ -38,6 +42,9 @@ export default function AdminVentasPage() {
   }, []);
 
   const filtered = orders.filter(o => {
+    // Si es vendedor, solo mostrar sus órdenes asignadas
+    if (role === "vendedor" && o.assigned_to !== userId) return false;
+    
     if (status && (o.status || "").toLowerCase() !== status.toLowerCase()) return false;
     if (q) {
       const qq = q.toLowerCase();
@@ -50,7 +57,7 @@ export default function AdminVentasPage() {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-semibold mb-4">Ventas</h2>
+      <h2 className="text-2xl font-semibold mb-4">Gestión de Órdenes</h2>
       <SalesToolbar q={q} status={status} onChangeQ={setQ} onChangeStatus={setStatus} onClear={() => { setQ(""); setStatus(""); }} onExport={() => { /* export logic */ }} />
       <SalesStats totalOrders={stats.totalOrders} totalRevenue={stats.totalRevenue} pending={stats.pending} completed={stats.completed} />
   {error && <div className="text-red-600">{error}</div>}
@@ -71,7 +78,7 @@ export default function AdminVentasPage() {
             void changeStatus(id, status);
           }
         }}
-        sellers={sellers}
+        sellers={role === "vendedor" ? [] : sellers}
         onAssign={async (id, sellerId) => {
           if (!id) return;
           try {

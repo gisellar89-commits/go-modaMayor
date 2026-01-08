@@ -126,7 +126,7 @@ export default function AdminBannersPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-4">Banners (Home Carousel)</h1>
+      <h1 className="text-2xl font-semibold text-gray-900 mb-4">Banners (Home Carousel)</h1>
       {errorMsg && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
           <div className="flex items-center justify-between">
@@ -139,20 +139,26 @@ export default function AdminBannersPage() {
       )}
       <form onSubmit={upload} className="mb-6 space-y-2">
         <div>
-          <label className="block text-sm">Imagen</label>
-          <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <label className="block text-sm text-gray-900 mb-1">Imagen</label>
+          <div className="flex items-center gap-3">
+            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+              Seleccionar archivo
+              <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="hidden" />
+            </label>
+            <span className="text-sm text-gray-600">{file ? file.name : 'Sin archivos seleccionados'}</span>
+          </div>
         </div>
         <div>
-          <label className="block text-sm">Alt text</label>
-          <input value={alt} onChange={(e) => setAlt(e.target.value)} className="w-full border p-2 rounded" />
+          <label className="block text-sm text-gray-900">Alt text</label>
+          <input value={alt} onChange={(e) => setAlt(e.target.value)} className="w-full border p-2 rounded text-gray-900 placeholder:text-gray-400" />
         </div>
         <div>
-          <label className="block text-sm">Link (opcional)</label>
-          <input value={link} onChange={(e) => setLink(e.target.value)} className="w-full border p-2 rounded" />
+          <label className="block text-sm text-gray-900">Link (opcional)</label>
+          <input value={link} onChange={(e) => setLink(e.target.value)} className="w-full border p-2 rounded text-gray-900 placeholder:text-gray-400" />
         </div>
         <div className="flex gap-4 items-center">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Mostrar</label>
-          <label className="flex items-center gap-2">Orden <input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} className="w-20 border p-1 rounded" /></label>
+          <label className="flex items-center gap-2 text-gray-900"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Mostrar</label>
+          <label className="flex items-center gap-2 text-gray-900">Orden <input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} className="w-20 border p-1 rounded text-gray-900" /></label>
         </div>
         <div>
           <button className="btn-primary py-2 px-4">Subir</button>
@@ -160,7 +166,7 @@ export default function AdminBannersPage() {
       </form>
 
       <section>
-        <h2 className="text-xl font-medium mb-2">Lista de banners</h2>
+        <h2 className="text-xl font-medium text-gray-900 mb-2">Lista de banners</h2>
         <div className="grid gap-4">
           {banners.map((b, idx) => (
             <div key={b.ID}
@@ -174,12 +180,12 @@ export default function AdminBannersPage() {
               <div className="flex-1">
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="font-semibold">{b.alt_text || '(sin alt)'}</div>
+                    <div className="font-semibold text-gray-900">{b.alt_text || '(sin alt)'}</div>
                     <div className="text-sm text-gray-600">{b.link || ''}</div>
                   </div>
                   <div className="flex gap-2 items-center">
-                    <button onClick={() => toggleActive(b)} className="px-2 py-1 border rounded">{b.active ? 'Ocultar' : 'Mostrar'}</button>
-                    <button onClick={() => remove(b.ID)} className="px-2 py-1 border rounded">Eliminar</button>
+                    <button onClick={() => toggleActive(b)} className="px-2 py-1 border rounded text-gray-900">{b.active ? 'Ocultar' : 'Mostrar'}</button>
+                    <button onClick={() => remove(b.ID)} className="px-2 py-1 border rounded text-gray-900">Eliminar</button>
                   </div>
                 </div>
                 <div className="text-sm text-gray-500 mt-1">Orden: {b.order}</div>

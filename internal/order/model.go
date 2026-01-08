@@ -7,6 +7,7 @@ import (
 type Order struct {
 	gorm.Model
 	UserID uint        `json:"user_id"`
+	CartID *uint       `json:"cart_id" gorm:"index"` // Referencia al carrito original
 	Total  float64     `json:"total"`
 	Status string      `json:"status"`
 	Items  []OrderItem `json:"items" gorm:"foreignKey:OrderID"`

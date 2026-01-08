@@ -164,6 +164,8 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/cart", user.AuthMiddleware(), cart.GetCart)
 	// Resumen del carrito con precios dinámicos según price tiers
 	r.GET("/cart/summary", user.AuthMiddleware(), cart.GetCartSummary)
+	// Calcular precio para invitados (usuarios no autenticados) - usa solo el tier base
+	r.POST("/cart/guest-price", cart.CalculateGuestPrice)
 	// Verificar disponibilidad de stock para items del carrito
 	r.GET("/cart/check-stock", user.AuthMiddleware(), cart.CheckCartStock)
 	// Vendedor: listar carritos asignados
@@ -172,7 +174,8 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/cart/seller/debug", user.AuthMiddleware(), user.RequireRole("vendedor"), cart.GetCartsForSellerDebug)
 	// Obtener carrito por ID (admin/owner/vendedor asignado)
 	r.GET("/cart/:id", user.AuthMiddleware(), cart.GetCartByID)
-	r.POST("/cart/add", user.AuthMiddleware(), cart.AddToCart)
+	// Permitir agregar al carrito sin autenticación (opcional, manejado por frontend)
+	r.POST("/cart/add", user.OptionalAuthMiddleware(), cart.AddToCart)
 	r.PUT("/cart/update/:product_id", user.AuthMiddleware(), cart.UpdateCartItem)
 	r.DELETE("/cart/remove/:product_id", user.AuthMiddleware(), cart.RemoveFromCart)
 	r.DELETE("/cart/clear", user.AuthMiddleware(), cart.ClearCart)

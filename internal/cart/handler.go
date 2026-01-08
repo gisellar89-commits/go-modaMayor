@@ -7,6 +7,7 @@ import (
 	"go-modaMayor/internal/product"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -30,9 +31,10 @@ func GetCart(c *gin.Context) {
 		return
 	}
 	var cart Cart
-	// Buscar carrito activo (pendiente o edicion)
+	// Buscar carrito activo (priorizar edicion, luego por updated_at más reciente)
 	err := config.DB.Preload("Items.Product").Preload("Items.Variant").
 		Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
+		Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").
 		First(&cart).Error
 
 	if err != nil {
@@ -64,7 +66,13 @@ type AddToCartInput struct {
 func AddToCart(c *gin.Context) {
 	userID, ok := getUserID(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No autorizado"})
+		// Usuario no autenticado: devolver respuesta indicando que debe loguearse
+		// El frontend manejará el carrito en localStorage temporalmente
+		c.JSON(http.StatusOK, gin.H{
+			"message":         "Para guardar el carrito y realizar la compra, por favor inicia sesión",
+			"requires_login":  true,
+			"cart_local_only": true,
+		})
 		return
 	}
 	var input AddToCartInput
@@ -96,16 +104,35 @@ func AddToCart(c *gin.Context) {
 			}
 		}
 	} else {
-		// Buscar carrito por usuario o por vendedor asignado. Si no existe, crear uno para este usuario.
-		if err := config.DB.Where("user_id = ? OR vendedor_id = ?", userID, userID).FirstOrCreate(&cart, Cart{UserID: userID, Estado: "pendiente"}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		// Buscar carrito activo (priorizar edicion, luego por updated_at más reciente)
+		err := config.DB.
+			Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
+			Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").
+			First(&cart).Error
+		
+		if err != nil {
+			// Si no existe, crear uno nuevo
+			if err == gorm.ErrRecordNotFound {
+				cart = Cart{UserID: userID, Estado: "edicion"}
+				if err := config.DB.Create(&cart).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+					return
+				}
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
 		}
 	}
 	// Permitir modificar solo si el estado es 'pendiente', 'edicion' o 'esperando_vendedora'
-	// Si el carrito existe pero tiene un estado no válido (ej: fue completado), crear uno nuevo
+	// Si el carrito existe pero tiene un estado no válido (ej: fue completado), retornar error
 	if cart.Estado != "pendiente" && cart.Estado != "edicion" && cart.Estado != "esperando_vendedora" {
-		// Si el carrito está en un estado finalizado (ej: 'completado', 'pagado'), crear uno nuevo
+		// Si se especificó cart_id (vendedora agregando a carrito de cliente), no permitir
+		if cartIDStr != "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "No se puede modificar el carrito en estado: " + cart.Estado})
+			return
+		}
+		// Si es el carrito propio del usuario y está finalizado, crear uno nuevo
 		if cart.Estado == "completado" || cart.Estado == "pagado" || cart.Estado == "listo_para_pago" {
 			// Crear un nuevo carrito en estado pendiente
 			newCart := Cart{UserID: userID, Estado: "pendiente"}
@@ -345,13 +372,40 @@ func TransferCartToSeller(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Crear la orden inmediatamente cuando se solicita vendedora (usando SQL directo para evitar import cycle)
+	type TempOrder struct {
+		ID         uint
+		UserID     uint
+		CartID     *uint
+		AssignedTo uint
+		Status     string
+		Total      float64
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+	}
+	cartIDVal := cart.ID
+	tempOrder := TempOrder{
+		UserID:     cart.UserID,
+		CartID:     &cartIDVal,
+		AssignedTo: input.VendedorID,
+		Status:     "asignada",
+		Total:      0,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+	if err := config.DB.Table("orders").Create(&tempOrder).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo crear la orden"})
+		return
+	}
+
 	// Crear notificación para el vendedor
 	notif := notification.Notification{
 		UserID:  input.VendedorID,
 		Message: "Tienes un nuevo carrito asignado para revisión y edición.",
 	}
 	config.DB.Create(&notif)
-	c.JSON(http.StatusOK, gin.H{"message": "Carrito transferido al vendedor", "cart": cart})
+	c.JSON(http.StatusOK, gin.H{"message": "Carrito transferido al vendedor y orden creada", "cart": cart, "order_id": tempOrder.ID})
 }
 
 func UpdateCartItem(c *gin.Context) {
@@ -583,7 +637,7 @@ func GetCartsForSeller(c *gin.Context) {
 	userID := userIDIfc.(uint)
 
 	var carts []Cart
-	if err := config.DB.Preload("Items").Preload("Items.Product").Preload("Items.Variant").Where("vendedor_id = ?", userID).Find(&carts).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("Items").Preload("Items.Product").Preload("Items.Variant").Where("vendedor_id = ?", userID).Find(&carts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -647,6 +701,10 @@ func UpdateCartStatus(c *gin.Context) {
 	// If transitioning to 'listo_para_pago' we must finalize reserved stock and decrement real stock atomically
 	target := input.Estado
 	if target == "listo_para_pago" {
+		// Set expiration timestamps (24 hours from now)
+		now := time.Now()
+		expiresAt := now.Add(24 * time.Hour)
+		
 		// use transaction to ensure atomicity
 		errTx := config.DB.Transaction(func(tx *gorm.DB) error {
 			// reload items with lock (for update) to avoid races
@@ -689,8 +747,10 @@ func UpdateCartStatus(c *gin.Context) {
 					}
 				}
 			}
-			// finally update cart status
+			// finally update cart status and expiration timestamps
 			cartObj.Estado = target
+			cartObj.ReservedAt = &now
+			cartObj.ExpiresAt = &expiresAt
 			if err := tx.Save(&cartObj).Error; err != nil {
 				return err
 			}
@@ -761,11 +821,12 @@ func GetCartSummary(c *gin.Context) {
 	}
 
 	var cart Cart
-	// IMPORTANTE: Buscar solo carritos activos (pendiente, edicion, esperando_vendedora, listo_para_pago)
-	// Esto coincide con la lógica de AddToCart para evitar inconsistencias
+	// IMPORTANTE: Usar la misma lógica que GetCart y AddToCart
+	// Priorizar carritos en edicion y luego por updated_at más reciente
 	if err := config.DB.Preload("Items.Product").Preload("Items.Variant").
 		Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).
-		Order("id DESC").First(&cart).Error; err != nil {
+		Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").
+		First(&cart).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			log.Printf("🔔 GetCartSummary - No active cart found for user_id=%d", userID)
 			c.JSON(http.StatusOK, gin.H{
@@ -1052,5 +1113,98 @@ func CheckCartStock(c *gin.Context) {
 		"all_available":     allAvailable,
 		"total_items":       len(cart.Items),
 		"issues_count":      len(itemsWithIssues),
+	})
+}
+
+// Calcular precio de un producto usando el primer tier (para usuarios no autenticados)
+// Este endpoint es público y siempre usa el tier base/default
+func CalculateGuestPrice(c *gin.Context) {
+	type GuestPriceInput struct {
+		ProductID uint `json:"product_id" binding:"required"`
+		Quantity  int  `json:"quantity" binding:"required,gt=0"`
+	}
+
+	var input GuestPriceInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Obtener el producto
+	var prod product.Product
+	if err := config.DB.First(&prod, input.ProductID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Producto no encontrado"})
+		return
+	}
+
+	// Para invitados, usar el wholesale_price directamente
+	// Este es el precio base/mayorista que ya está configurado en el producto
+	unitPrice := prod.WholesalePrice
+	
+	// Si no hay wholesale_price configurado, calcular con tier default como fallback
+	if unitPrice == 0 {
+		// Obtener el primer tier (default) activo
+		var defaultTier struct {
+			ID           uint    `json:"id"`
+			Name         string  `json:"name"`
+			DisplayName  string  `json:"display_name"`
+			FormulaType  string  `json:"formula_type"`
+			Multiplier   float64 `json:"multiplier"`
+			Percentage   float64 `json:"percentage"`
+			FlatAmount   float64 `json:"flat_amount"`
+			MinQuantity  int     `json:"min_quantity"`
+			OrderIndex   int     `json:"order_index"`
+		}
+
+		if err := config.DB.Table("price_tiers").
+			Where("active = ? AND is_default = ? AND deleted_at IS NULL", true, true).
+			First(&defaultTier).Error; err != nil {
+			// Si no hay tier default, usar el primero por order_index
+			if err := config.DB.Table("price_tiers").
+				Where("active = ? AND deleted_at IS NULL", true).
+				Order("order_index ASC").
+				First(&defaultTier).Error; err != nil {
+				// Último fallback: cost_price * 2
+				unitPrice = prod.CostPrice * 2.0
+			} else {
+				// Calcular precio según el tier
+				costPrice := prod.CostPrice
+				switch defaultTier.FormulaType {
+				case "multiplier":
+					unitPrice = costPrice * defaultTier.Multiplier
+				case "percentage_markup":
+					unitPrice = costPrice + (costPrice * defaultTier.Percentage / 100.0)
+				case "flat_amount":
+					unitPrice = costPrice + defaultTier.FlatAmount
+				default:
+					unitPrice = costPrice * 2.0
+				}
+			}
+		} else {
+			// Calcular precio según el tier default
+			costPrice := prod.CostPrice
+			switch defaultTier.FormulaType {
+			case "multiplier":
+				unitPrice = costPrice * defaultTier.Multiplier
+			case "percentage_markup":
+				unitPrice = costPrice + (costPrice * defaultTier.Percentage / 100.0)
+			case "flat_amount":
+				unitPrice = costPrice + defaultTier.FlatAmount
+			default:
+				unitPrice = costPrice * 2.0
+			}
+		}
+	}
+
+	subtotal := unitPrice * float64(input.Quantity)
+
+	c.JSON(http.StatusOK, gin.H{
+		"product_id":                       prod.ID,
+		"product_name":                     prod.Name,
+		"quantity":                         input.Quantity,
+		"unit_price":                       unitPrice,
+		"subtotal":                         subtotal,
+		"message":                          "Precio base. Inicia sesión para acceder a precios por volumen",
+		"requires_login_for_better_prices": true,
 	})
 }

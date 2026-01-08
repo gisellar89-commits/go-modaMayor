@@ -252,7 +252,7 @@ export default function ProveedoresPage() {
           placeholder="Buscar por nombre, código o contacto..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
         />
       </div>
 
@@ -445,7 +445,7 @@ export default function ProveedoresPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="Ej: Textil SA"
                   required
                 />
@@ -460,7 +460,7 @@ export default function ProveedoresPage() {
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder:text-gray-400"
                   placeholder="Se genera automáticamente del nombre"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -479,7 +479,7 @@ export default function ProveedoresPage() {
                   name="contact"
                   value={formData.contact}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
                   placeholder="Ej: Juan Pérez - 11 1234-5678 - juan@textil.com"
                 />
                 <p className="text-xs text-gray-500 mt-1">

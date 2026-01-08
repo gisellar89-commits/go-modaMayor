@@ -21,9 +21,8 @@ export default function useSales(initialFilters: SalesFilters = {}) {
     setLoading(true);
     setError(null);
     try {
-      // Read token at call time so freshly-set tokens (after login) are picked up
-      // For client-side 'Mis pedidos' use the user-specific endpoint
-      const data = await (await import("../utils/api")).fetchMyOrders();
+      // Use fetchOrders for admin to see all orders
+      const data = await fetchOrders();
       setOrders(data);
     } catch (e: any) {
       // If auth error, show a toast but don't forcibly clear token here
@@ -65,8 +64,11 @@ export default function useSales(initialFilters: SalesFilters = {}) {
 
   const stats = {
     totalOrders: orders.length,
-    totalRevenue: orders.reduce((s, o) => s + (o.total ?? 0), 0),
-    pending: orders.filter(o => (o.status || "").toLowerCase() === "creada").length,
+    totalRevenue: orders.filter(o => (o.status || "").toLowerCase() === "finalizada").reduce((s, o) => s + (o.total ?? 0), 0),
+    pending: orders.filter(o => {
+      const status = (o.status || "").toLowerCase();
+      return status === "creada" || status === "asignada" || status === "procesando";
+    }).length,
     completed: orders.filter(o => (o.status || "").toLowerCase() === "finalizada").length,
   };
 

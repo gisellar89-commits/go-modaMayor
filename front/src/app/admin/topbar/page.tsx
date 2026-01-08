@@ -90,7 +90,7 @@ export default function AdminTopbarPage() {
 
   return (
     <main className="p-6 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-4">Editar Topbar</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Editar Topbar</h1>
       {error && <div className="mb-4 text-sm text-red-600" role="alert">{error}</div>}
       {/* Toasters apilados en esquina superior derecha */}
       {toasts.length > 0 && (
@@ -108,19 +108,19 @@ export default function AdminTopbarPage() {
         </div>
       )}
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Texto central</label>
-        <input value={centerText} onChange={(e) => setCenterText(e.target.value)} className="w-full p-2 border rounded" />
+        <label className="block text-sm font-medium text-gray-900 mb-1">Texto central</label>
+        <input value={centerText} onChange={(e) => setCenterText(e.target.value)} className="w-full p-2 border rounded text-gray-900 placeholder:text-gray-400" />
       </div>
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="font-semibold">Redes sociales</h2>
+          <h2 className="font-semibold text-gray-900">Redes sociales</h2>
           <button onClick={addLink} className="text-sm text-blue-600 hover:underline">Agregar</button>
         </div>
         <div className="space-y-2">
           {links.map((l, i) => (
             <div key={`${l.platform || 'link'}-${i}`} className="flex gap-2 items-center">
-              <input placeholder="Plataforma (instagram, facebook, whatsapp...)" value={l.platform} onChange={(e) => updateLink(i, 'platform', e.target.value)} className="flex-1 p-2 border rounded" />
-              <input placeholder="URL" value={l.url} onChange={(e) => updateLink(i, 'url', e.target.value)} className="flex-2 p-2 border rounded" />
+              <input placeholder="Plataforma (instagram, facebook, whatsapp...)" value={l.platform} onChange={(e) => updateLink(i, 'platform', e.target.value)} className="flex-1 p-2 border rounded text-gray-900 placeholder:text-gray-400" />
+              <input placeholder="URL" value={l.url} onChange={(e) => updateLink(i, 'url', e.target.value)} className="flex-2 p-2 border rounded text-gray-900 placeholder:text-gray-400" />
               <button onClick={() => removeLink(i)} className="text-red-600">Eliminar</button>
             </div>
           ))}

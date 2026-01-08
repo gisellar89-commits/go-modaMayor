@@ -51,6 +51,7 @@ export default function NuevoProductoPage() {
   const [selectedCombinations, setSelectedCombinations] = useState<Set<string>>(new Set());
   const [uploadingImages, setUploadingImages] = useState(false);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [savedStateForRecovery, setSavedStateForRecovery] = useState<any>(null);
   const router = useRouter();
 
   // Scroll to top when step changes
@@ -145,7 +146,22 @@ export default function NuevoProductoPage() {
   useEffect(() => {
     const savedState = loadWizardState();
     if (savedState) {
-      setShowRecoveryModal(true);
+      // Solo mostrar el modal si hay datos significativos (no solo timestamp)
+      const hasSignificantData = 
+        savedState.name || 
+        savedState.description || 
+        savedState.price || 
+        savedState.categoryId || 
+        (savedState.selectedColors && savedState.selectedColors.length > 0) ||
+        savedState.createdProductId;
+      
+      if (hasSignificantData) {
+        setSavedStateForRecovery(savedState);
+        setShowRecoveryModal(true);
+      } else {
+        // Si no hay datos significativos, limpiar el localStorage
+        clearWizardState();
+      }
     }
   }, []);
 
@@ -664,7 +680,7 @@ export default function NuevoProductoPage() {
 
   return (
     <main className={`p-4 mx-auto ${step === 3 ? 'max-w-6xl' : 'max-w-lg'}`}>
-      <h1 className="text-2xl font-bold mb-4">Nuevo producto</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-900">Nuevo producto</h1>
       {step === 1 && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input
@@ -673,30 +689,30 @@ export default function NuevoProductoPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-gray-900 placeholder:text-gray-400"
         />
         <textarea
           placeholder="Descripción"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-gray-900 placeholder:text-gray-400"
         />
         <input
           type="number"
           placeholder="Precio"
           value={price}
           onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-gray-900 placeholder:text-gray-400"
         />
         
         {/* Descuento */}
         <div className="border rounded p-3 bg-gray-50">
-          <label className="block font-semibold mb-2">Descuento</label>
+          <label className="block font-semibold mb-2 text-gray-900">Descuento</label>
           <div className="flex gap-2 items-center mb-2">
             <select 
               value={discountType} 
               onChange={e => setDiscountType(e.target.value)} 
-              className="border px-2 py-1 rounded"
+              className="border px-2 py-1 rounded text-gray-900"
             >
               <option value="none">Ninguno</option>
               <option value="percent">Porcentaje (%)</option>
@@ -709,7 +725,7 @@ export default function NuevoProductoPage() {
                 step="0.01" 
                 value={discountValue} 
                 onChange={e => setDiscountValue(Number(e.target.value))} 
-                className="border px-2 py-1 rounded w-32"
+                className="border px-2 py-1 rounded w-32 text-gray-900 placeholder:text-gray-400"
                 placeholder={discountType === 'percent' ? '%' : '$'}
               />
             )}
@@ -740,7 +756,7 @@ export default function NuevoProductoPage() {
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           required
-          className="border px-2 py-1"
+          className="border px-2 py-1 text-gray-900"
         >
           <option value="">Selecciona categoría</option>
             {categories.map((cat, i) => {
@@ -758,7 +774,7 @@ export default function NuevoProductoPage() {
             value={subcategoryId}
             onChange={(e) => setSubcategoryId(e.target.value)}
             required
-            className="border px-2 py-1"
+            className="border px-2 py-1 text-gray-900"
           >
             <option value="">Selecciona subcategoría</option>
             {subcategories.map((sub, i) => {
@@ -773,7 +789,7 @@ export default function NuevoProductoPage() {
           </select>
         )}
         <div className="border rounded p-3 bg-gray-50">
-          <label className="block font-semibold mb-2">Imágenes del Producto</label>
+          <label className="block font-semibold mb-2 text-gray-900">Imágenes del Producto</label>
           
           {/* Selector de archivos */}
           <div className="mb-3">
@@ -839,14 +855,14 @@ export default function NuevoProductoPage() {
               placeholder="https://ejemplo.com/imagen.jpg"
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full border px-3 py-2 rounded"
+              className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
             />
           </div>
         </div>
           <div className="flex gap-2">
           <div>
-            <label className="block text-sm">Tipo de talles</label>
-            <select value={selectedSizeType ?? ''} onChange={e=>setSelectedSizeType(e.target.value)} className="border px-2 py-1">
+            <label className="block text-sm text-gray-900">Tipo de talles</label>
+            <select value={selectedSizeType ?? ''} onChange={e=>setSelectedSizeType(e.target.value)} className="border px-2 py-1 text-gray-900">
               <option value="">Selecciona tipo de talles</option>
               {sizeTypes.map((st:any)=> {
                 const stId = st.ID || st.id;
@@ -859,11 +875,11 @@ export default function NuevoProductoPage() {
             )}
           </div>
           <div>
-            <label className="block text-sm">Proveedor</label>
+            <label className="block text-sm text-gray-900">Proveedor</label>
             <select 
               value={selectedSupplierId} 
               onChange={e=>setSelectedSupplierId(e.target.value)} 
-              className="border px-2 py-1 rounded"
+              className="border px-2 py-1 rounded text-gray-900"
             >
               <option value="">Ninguno</option>
               {suppliers.map((s:any)=> (
@@ -877,11 +893,11 @@ export default function NuevoProductoPage() {
             )}
           </div>
           <div>
-            <label className="block text-sm">Temporada</label>
+            <label className="block text-sm text-gray-900">Temporada</label>
             <select 
               value={selectedSeasonId} 
               onChange={e=>setSelectedSeasonId(e.target.value)} 
-              className="border px-2 py-1 rounded"
+              className="border px-2 py-1 rounded text-gray-900"
             >
               <option value="">Ninguna</option>
               {seasons.map((s:any)=> (
@@ -897,34 +913,88 @@ export default function NuevoProductoPage() {
         </div>
         <div className="flex gap-2">
           <div>
-            <label className="block text-sm">Año</label>
-            <input type="number" value={year} onChange={e=>setYear(Number(e.target.value)||'')} className="border px-2 py-1 w-32" />
+            <label className="block text-sm text-gray-900">Año</label>
+            <input type="number" value={year} onChange={e=>setYear(Number(e.target.value)||'')} className="border px-2 py-1 w-32 text-gray-900" />
           </div>
           <div>
-            <label className="block text-sm">Total stock (opcional)</label>
-            <input type="number" value={totalStock} onChange={e=>setTotalStock(Number(e.target.value)||'')} className="border px-2 py-1 w-32" />
+            <label className="block text-sm text-gray-900">Total stock (opcional)</label>
+            <input type="number" value={totalStock} onChange={e=>setTotalStock(Number(e.target.value)||'')} className="border px-2 py-1 w-32 text-gray-900" />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm">Colores disponibles</label>
+          <label className="block text-sm text-gray-900 mb-2">Colores disponibles</label>
           <div className="flex flex-wrap gap-2">
+            {/* Opción especial: Sin variante de color */}
+            <label 
+              className={`border p-2 cursor-pointer text-gray-900 ${
+                selectedColors.length === 1 && selectedColors[0] === 'unico' 
+                  ? 'bg-blue-200 border-blue-500 font-semibold' 
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              <input 
+                type="checkbox" 
+                checked={selectedColors.length === 1 && selectedColors[0] === 'unico'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    // Si se selecciona "sin variante", limpiar todos los demás colores
+                    setSelectedColors(['unico']);
+                  } else {
+                    // Si se deselecciona "sin variante", limpiar la selección
+                    setSelectedColors([]);
+                  }
+                }}
+                className="mr-2" 
+              />
+              Sin variante de color
+            </label>
+
+            {/* Separador visual */}
+            <div className="w-full h-px bg-gray-300 my-1"></div>
+
+            {/* Colores normales */}
             {colors.map((c:any)=> {
               const colorKey = c.key ?? String(c.id)
               const checked = selectedColors.includes(colorKey)
+              const isDisabled = selectedColors.includes('unico')
+              
               return (
-                <label key={colorKey} className={`border p-2 cursor-pointer ${checked? 'bg-gray-200':''}`}>
-                  <input type="checkbox" checked={checked} onChange={()=>{
-                    setSelectedColors(prev => prev.includes(colorKey)? prev.filter(x=>x!==colorKey) : [...prev, colorKey])
-                  }} className="mr-2" />{c.name ?? c.key}
+                <label 
+                  key={colorKey} 
+                  className={`border p-2 cursor-pointer text-gray-900 ${
+                    checked ? 'bg-gray-200 border-gray-500 font-semibold' : 'hover:bg-gray-100'
+                  } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={checked} 
+                    disabled={isDisabled}
+                    onChange={()=>{
+                      if (isDisabled) return;
+                      setSelectedColors(prev => {
+                        // Si se selecciona un color normal, quitar "unico" si está presente
+                        const filtered = prev.filter(x => x !== 'unico');
+                        return filtered.includes(colorKey) 
+                          ? filtered.filter(x => x !== colorKey) 
+                          : [...filtered, colorKey];
+                      });
+                    }} 
+                    className="mr-2" 
+                  />
+                  {c.name ?? c.key}
                 </label>
               )
             })}
           </div>
+          <p className="text-xs text-gray-500 mt-2">
+            💡 Selecciona "Sin variante de color" si el producto no tiene variaciones de color, 
+            o elige uno o más colores si tiene variantes.
+          </p>
         </div>
 
         <div className="border rounded p-4 bg-gray-50">
-          <label className="block text-sm font-semibold mb-3">Tags para el Home</label>
+          <label className="block text-sm font-semibold mb-3 text-gray-900">Tags para el Home</label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -933,7 +1003,7 @@ export default function NuevoProductoPage() {
                 onChange={(e) => setIsNewArrival(e.target.checked)}
                 className="w-4 h-4"
               />
-              <span className="text-sm">Nuevo Ingreso</span>
+              <span className="text-sm text-gray-900">Nuevo Ingreso</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -942,7 +1012,7 @@ export default function NuevoProductoPage() {
                 onChange={(e) => setIsFeatured(e.target.checked)}
                 className="w-4 h-4"
               />
-              <span className="text-sm">Destacado</span>
+              <span className="text-sm text-gray-900">Destacado</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -951,7 +1021,7 @@ export default function NuevoProductoPage() {
                 onChange={(e) => setIsOffer(e.target.checked)}
                 className="w-4 h-4"
               />
-              <span className="text-sm">En Oferta</span>
+              <span className="text-sm text-gray-900">En Oferta</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -960,7 +1030,7 @@ export default function NuevoProductoPage() {
                 onChange={(e) => setIsTrending(e.target.checked)}
                 className="w-4 h-4"
               />
-              <span className="text-sm">Tendencia</span>
+              <span className="text-sm text-gray-900">Tendencia</span>
             </label>
           </div>
         </div>
@@ -980,9 +1050,9 @@ export default function NuevoProductoPage() {
 
       {step === 2 && (
         <div className="flex flex-col gap-4">
-          <h2 className="font-semibold">Paso 2 — Generar variantes</h2>
+          <h2 className="font-semibold text-gray-900">Paso 2 — Generar variantes</h2>
               <div>
-                <label className="block text-sm">Colores seleccionados</label>
+                <label className="block text-sm text-gray-900">Colores seleccionados</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {colors.length === 0 && <div className="text-sm text-gray-500">No hay colores disponibles.</div>}
                   {colors.map((c:any)=>{
@@ -994,17 +1064,17 @@ export default function NuevoProductoPage() {
                         <input type="checkbox" checked={checked} onChange={()=>{
                           setSelectedColors(prev => prev.includes(key)? prev.filter(x=>x!==key) : [...prev, key])
                         }} className="mr-2" />
-                        <span className="text-sm">{c.name ?? c.key}</span>
+                        <span className="text-sm text-gray-900">{c.name ?? c.key}</span>
                       </label>
                     )
                   })}
                 </div>
 
-                <label className="block text-sm">Talles disponibles</label>
+                <label className="block text-sm text-gray-900">Talles disponibles</label>
                 <div className="flex flex-wrap gap-2">
                   {availableSizes.length === 0 && <div className="text-sm text-gray-500">No hay talles cargados o seleccionaste talle único.</div>}
                   {availableSizes.map((s, i)=> (
-                    <label key={s.id ?? s.value ?? i} className={`border p-2 cursor-pointer ${selectedSizes.includes(s.value)? 'bg-gray-200':''}`}>
+                    <label key={s.id ?? s.value ?? i} className={`border p-2 cursor-pointer text-gray-900 ${selectedSizes.includes(s.value)? 'bg-gray-200':''}`}>
                       <input type="checkbox" checked={selectedSizes.includes(s.value)} onChange={()=>{
                         setSelectedSizes(prev => prev.includes(s.value)? prev.filter(x=>x!==s.value) : [...prev, s.value])
                       }} className="mr-2" />{s.value}
@@ -1026,12 +1096,12 @@ export default function NuevoProductoPage() {
 
       {step === 3 && (
         <div className="flex flex-col gap-4">
-          <h2 className="font-semibold">Paso 3 — Asignar stock por ubicación</h2>
-          {totalStock !== '' && totalStock > 0 && (
+          <h2 className="font-semibold text-gray-900">Paso 3 — Asignar stock por ubicación</h2>
+          {totalStock && Number(totalStock) > 0 && (
             <div className="bg-blue-50 border border-blue-200 p-3 rounded">
-              <p className="text-sm">
+              <p className="text-sm text-gray-900">
                 <strong>Stock total asignado:</strong> {Object.values(stocks).reduce((sum, locs) => sum + Object.values(locs).reduce((s, q) => s + q, 0), 0)} / {totalStock}
-                {Object.values(stocks).reduce((sum, locs) => sum + Object.values(locs).reduce((s, q) => s + q, 0), 0) > totalStock && (
+                {Object.values(stocks).reduce((sum, locs) => sum + Object.values(locs).reduce((s, q) => s + q, 0), 0) > Number(totalStock) && (
                   <span className="text-red-600 ml-2">⚠ Excede el límite</span>
                 )}
               </p>
@@ -1041,9 +1111,9 @@ export default function NuevoProductoPage() {
             <table className="w-full table-auto border-collapse">
               <thead>
                 <tr>
-                  <th className="border px-4 py-2">Color</th>
-                  <th className="border px-4 py-2">Talle</th>
-                  {locations.map(loc=> <th key={loc} className="border px-4 py-2 capitalize">{loc}</th>)}
+                  <th className="border px-4 py-2 text-gray-900">Color</th>
+                  <th className="border px-4 py-2 text-gray-900">Talle</th>
+                  {locations.map(loc=> <th key={loc} className="border px-4 py-2 capitalize text-gray-900">{loc}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -1058,10 +1128,10 @@ export default function NuevoProductoPage() {
                           style={{ backgroundColor: v.color_hex || '#ccc' }}
                           title={v.color}
                         />
-                        <span className="font-medium">{v.color}</span>
+                        <span className="font-medium text-gray-900">{v.color}</span>
                       </div>
                     </td>
-                    <td className="border px-4 py-2 font-medium">{v.size}</td>
+                    <td className="border px-4 py-2 font-medium text-gray-900">{v.size}</td>
                     {locations.map(loc=> {
                       const currentVal = (stocks[variantId] && stocks[variantId][loc]) ?? 0
                       return (
@@ -1074,7 +1144,7 @@ export default function NuevoProductoPage() {
                             copy[variantId][loc] = qty
                             return copy
                           })
-                        }} className="w-20 border px-2 py-1 rounded" />
+                        }} className="w-20 border px-2 py-1 rounded text-gray-900" />
                       </td>
                       )
                     })}
@@ -1206,6 +1276,7 @@ export default function NuevoProductoPage() {
               <button
                 onClick={() => {
                   clearWizardState();
+                  setSavedStateForRecovery(null);
                   setShowRecoveryModal(false);
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
@@ -1214,9 +1285,8 @@ export default function NuevoProductoPage() {
               </button>
               <button
                 onClick={() => {
-                  const savedState = loadWizardState();
-                  if (savedState) {
-                    restoreWizardState(savedState);
+                  if (savedStateForRecovery) {
+                    restoreWizardState(savedStateForRecovery);
                   }
                   setShowRecoveryModal(false);
                 }}

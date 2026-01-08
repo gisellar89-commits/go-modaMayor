@@ -229,15 +229,39 @@ func CheckoutCart(c *gin.Context) {
 		total += precio * float64(item.Quantity)
 	}
 
-	// Crear la orden
-	orden := Order{
-		UserID: carrito.UserID,
-		Status: "creada",
-		Total:  total,
-		Items:  orderItems,
+	// Buscar la orden existente creada cuando se solicitó vendedora
+	var orden Order
+	if err := config.DB.Where("cart_id = ?", carrito.ID).First(&orden).Error; err != nil {
+		// Si no existe, crear una nueva (caso legacy)
+		cartIDPtr := &carrito.ID
+		orden = Order{
+			UserID:     carrito.UserID,
+			CartID:     cartIDPtr,
+			AssignedTo: carrito.VendedorID,
+			Status:     "finalizada",
+			Total:      total,
+		}
+		if err := config.DB.Create(&orden).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	} else {
+		// Actualizar la orden existente con los items y total
+		orden.Status = "finalizada"
+		orden.Total = total
+		if err := config.DB.Save(&orden).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo actualizar la orden"})
+			return
+		}
 	}
-	if err := config.DB.Create(&orden).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+	// Guardar los items de la orden (reemplazar items anteriores si existían)
+	config.DB.Where("order_id = ?", orden.ID).Delete(&OrderItem{})
+	for i := range orderItems {
+		orderItems[i].OrderID = orden.ID
+	}
+	if err := config.DB.Create(&orderItems).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudieron crear los items de la orden"})
 		return
 	}
 
@@ -475,6 +499,15 @@ func SubmitCartForAssignment(c *gin.Context) {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo actualizar carrito"})
 		return
+	}
+
+	// Crear un nuevo carrito vacío para el cliente para que pueda seguir comprando
+	newCart := cart.Cart{
+		UserID: carrito.UserID,
+		Estado: "pendiente",
+	}
+	if err := tx.Create(&newCart).Error; err != nil {
+		// No es crítico si falla, continuar
 	}
 
 	// Notificar al vendedor elegido y al cliente

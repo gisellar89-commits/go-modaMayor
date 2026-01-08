@@ -77,7 +77,7 @@ export default function AdminProductosPage() {
   const authLoading = auth?.loading ?? false;
 
   useEffect(() => {
-    if (!user || !["admin", "encargado"].includes(user.role)) return;
+    if (!user || !["admin", "encargado", "vendedor"].includes(user.role)) return;
     const token = localStorage.getItem("token") ?? undefined;
     if (!token) return;
     setLoading(true);
@@ -588,23 +588,31 @@ export default function AdminProductosPage() {
   };
 
   if (authLoading || loading) return <main>Cargando...</main>;
-  if (!user || !["admin", "encargado"].includes(user.role)) return <main>No tienes permisos para ver esta página.</main>;
+  if (!user || !["admin", "encargado", "vendedor"].includes(user.role)) return <main>No tienes permisos para ver esta página.</main>;
   if (error) return <main className="text-red-500">{error}</main>;
+
+  const isVendedor = user.role === "vendedor";
 
   return (
     <main className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Administración de productos</h1>
-        <p className="text-gray-600 mt-1">Gestiona el catálogo de productos, precios y variantes</p>
+        <h1 className="text-3xl font-bold text-gray-900">
+          {isVendedor ? "Listado de productos" : "Administración de productos"}
+        </h1>
+        <p className="text-gray-600 mt-1">
+          {isVendedor ? "Consulta el catálogo de productos y precios" : "Gestiona el catálogo de productos, precios y variantes"}
+        </p>
       </div>
 
       {/* Navigation tabs */}
-      <nav className="mb-6 flex gap-4 border-b border-gray-200 pb-2">
-        <Link href="/admin/productos" className="text-blue-600 font-medium border-b-2 border-blue-600 pb-2">Productos</Link>
-        <Link href="/admin/subcategorias" className="text-gray-600 hover:text-gray-900">Subcategorías</Link>
-        <Link href="/admin/categorias" className="text-gray-600 hover:text-gray-900">Categorías</Link>
-      </nav>
+      {!isVendedor && (
+        <nav className="mb-6 flex gap-4 border-b border-gray-200 pb-2">
+          <Link href="/admin/productos" className="text-blue-600 font-medium border-b-2 border-blue-600 pb-2">Productos</Link>
+          <Link href="/admin/subcategorias" className="text-gray-600 hover:text-gray-900">Subcategorías</Link>
+          <Link href="/admin/categorias" className="text-gray-600 hover:text-gray-900">Categorías</Link>
+        </nav>
+      )}
 
       {/* Search and actions bar */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -637,12 +645,14 @@ export default function AdminProductosPage() {
             <option value={25}>25 por página</option>
             <option value={50}>50 por página</option>
           </select>
-          <Link
-            href="/admin/productos/nuevo"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition whitespace-nowrap inline-block"
-          >
-            + Crear producto
-          </Link>
+          {!isVendedor && (
+            <Link
+              href="/admin/productos/nuevo"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition whitespace-nowrap inline-block"
+            >
+              + Crear producto
+            </Link>
+          )}
         </div>
         {total !== undefined && (
           <div className="text-sm text-gray-600 mt-2">
@@ -844,7 +854,7 @@ export default function AdminProductosPage() {
     </div>
   )}
   {/* Modal flow removed: use the dedicated stocks page instead */}
-  <h2 className="text-xl font-semibold mb-4">Listado de productos</h2>
+  <h2 className="text-xl font-semibold mb-4 text-gray-900">Listado de productos</h2>
       
       {/* Info bar */}
       <div className="mb-4 flex justify-between items-center">
@@ -862,7 +872,7 @@ export default function AdminProductosPage() {
           <div className="w-32">Código</div>
           <div className="flex-1">Categoría</div>
           <div className="w-40">Precios</div>
-          <div className="w-32 text-center">Acciones</div>
+          {!isVendedor && <div className="w-32 text-center">Acciones</div>}
         </div>
 
         {/* Rows */}
@@ -884,7 +894,7 @@ export default function AdminProductosPage() {
                   <div className="w-14 h-14 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden">
                     {prod.image_url ? (
                       <img 
-                        src={prod.image_url} 
+                        src={prod.image_url.startsWith('/') ? `http://localhost:8080${prod.image_url}` : prod.image_url} 
                         alt={prod.name} 
                         className="w-full h-full object-cover"
                       />
@@ -909,10 +919,12 @@ export default function AdminProductosPage() {
                 
                 <div className="w-40">
                   <div className="text-xs space-y-0.5">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Costo:</span>
-                      <span className="font-medium text-gray-700">${costPrice.toFixed(2)}</span>
-                    </div>
+                    {!isVendedor && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Costo:</span>
+                        <span className="font-medium text-gray-700">${costPrice.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Mayor:</span>
                       <span className="font-medium text-gray-900">${wholesalePrice.toFixed(2)}</span>
@@ -928,50 +940,52 @@ export default function AdminProductosPage() {
                   </div>
                 </div>
                 
-                <div className="w-32 flex items-center justify-center gap-2">
-                  <button 
-                    className="p-2 hover:bg-gray-100 rounded transition" 
-                    title="Ver inventario"
-                    onClick={() => {
-                      window.location.href = `/admin/inventario?search=PROD-${String(id).padStart(5, '0')}`;
-                    }}
-                  >
-                    <Image src="/box.svg" alt="Inventario" width={20} height={20} />
-                  </button>
+                {!isVendedor && (
+                  <div className="w-32 flex items-center justify-center gap-2">
+                    <button 
+                      className="p-2 hover:bg-gray-100 rounded transition" 
+                      title="Ver inventario"
+                      onClick={() => {
+                        window.location.href = `/admin/inventario?search=PROD-${String(id).padStart(5, '0')}`;
+                      }}
+                    >
+                      <Image src="/box.svg" alt="Inventario" width={20} height={20} />
+                    </button>
 
-                  <button 
-                    className="p-2 hover:bg-gray-100 rounded transition" 
-                    title="Editar"
-                    onClick={() => {
-                      window.location.href = `/admin/productos/${id}`;
-                    }}
-                  >
-                    <Image src="/edit.svg" alt="Editar" width={20} height={20} />
-                  </button>
+                    <button 
+                      className="p-2 hover:bg-gray-100 rounded transition" 
+                      title="Editar"
+                      onClick={() => {
+                        window.location.href = `/admin/productos/${id}`;
+                      }}
+                    >
+                      <Image src="/edit.svg" alt="Editar" width={20} height={20} />
+                    </button>
 
-                  <button 
-                    className="p-2 hover:bg-gray-100 rounded transition" 
-                    title="Eliminar"
-                    onClick={async () => {
-                      if (!window.confirm("¿Seguro que deseas eliminar este producto?")) return;
-                      try {
-                        const token = localStorage.getItem("token") ?? undefined;
-                        const res = await fetch(`http://localhost:8080/products/${id}`, {
-                          method: "DELETE",
-                          headers: {
-                            ...(token ? { Authorization: `Bearer ${token}` } : {})
-                          }
-                        });
-                        if (!res.ok) throw new Error("No se pudo eliminar el producto");
-                        setProducts(products.filter(p => (p.ID || p.id) !== id));
-                      } catch (e: any) {
-                        alert("Error al eliminar: " + (e.message || String(e)));
-                      }
-                    }}
-                  >
-                    <Image src="/trash.svg" alt="Eliminar" width={20} height={20} />
-                  </button>
-                </div>
+                    <button 
+                      className="p-2 hover:bg-gray-100 rounded transition" 
+                      title="Eliminar"
+                      onClick={async () => {
+                        if (!window.confirm("¿Seguro que deseas eliminar este producto?")) return;
+                        try {
+                          const token = localStorage.getItem("token") ?? undefined;
+                          const res = await fetch(`http://localhost:8080/products/${id}`, {
+                            method: "DELETE",
+                            headers: {
+                              ...(token ? { Authorization: `Bearer ${token}` } : {})
+                            }
+                          });
+                          if (!res.ok) throw new Error("No se pudo eliminar el producto");
+                          setProducts(products.filter(p => (p.ID || p.id) !== id));
+                        } catch (e: any) {
+                          alert("Error al eliminar: " + (e.message || String(e)));
+                        }
+                      }}
+                    >
+                      <Image src="/trash.svg" alt="Eliminar" width={20} height={20} />
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

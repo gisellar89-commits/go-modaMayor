@@ -241,7 +241,7 @@ export default function UsersAdmin() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Administración de Usuarios</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Administración de Usuarios</h1>
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
@@ -437,7 +437,7 @@ export default function UsersAdmin() {
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-4">Crear Nuevo Usuario</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900">Crear Nuevo Usuario</h3>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
@@ -445,7 +445,7 @@ export default function UsersAdmin() {
                   type="text"
                   value={newUser.name}
                   onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   required
                 />
               </div>
@@ -456,7 +456,7 @@ export default function UsersAdmin() {
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   required
                 />
               </div>
@@ -468,7 +468,7 @@ export default function UsersAdmin() {
                   value={newUser.phone}
                   onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
                   placeholder="Ej: +54 9 11 1234-5678"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 placeholder:text-gray-400"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">Necesario para comunicación con vendedoras vía WhatsApp</p>
@@ -480,7 +480,7 @@ export default function UsersAdmin() {
                   type="password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   required
                 />
               </div>
@@ -490,7 +490,7 @@ export default function UsersAdmin() {
                 <select
                   value={newUser.role}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   required
                 >
                   <option value="vendedor">Vendedor</option>
@@ -521,7 +521,7 @@ export default function UsersAdmin() {
                     type="time"
                     value={newUser.working_from}
                     onChange={(e) => setNewUser({ ...newUser, working_from: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   />
                 </div>
                 <div>
@@ -530,7 +530,7 @@ export default function UsersAdmin() {
                     type="time"
                     value={newUser.working_to}
                     onChange={(e) => setNewUser({ ...newUser, working_to: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   />
                 </div>
               </div>
@@ -571,7 +571,7 @@ export default function UsersAdmin() {
       {editingUser && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-4">Editar Usuario</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900">Editar Usuario</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
@@ -579,7 +579,7 @@ export default function UsersAdmin() {
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                 />
               </div>
               
@@ -589,7 +589,7 @@ export default function UsersAdmin() {
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                 />
               </div>
               
@@ -600,7 +600,7 @@ export default function UsersAdmin() {
                   value={editForm.phone}
                   onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                   placeholder="Ej: +54 9 11 1234-5678"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -610,7 +610,7 @@ export default function UsersAdmin() {
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                 >
                   <option value="cliente">Cliente</option>
                   <option value="vendedor">Vendedor</option>
@@ -638,7 +638,7 @@ export default function UsersAdmin() {
                     type="time"
                     value={editForm.working_from}
                     onChange={(e) => setEditForm({ ...editForm, working_from: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   />
                 </div>
                 <div>
@@ -647,7 +647,7 @@ export default function UsersAdmin() {
                     type="time"
                     value={editForm.working_to}
                     onChange={(e) => setEditForm({ ...editForm, working_to: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
                   />
                 </div>
               </div>

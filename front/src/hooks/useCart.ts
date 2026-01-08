@@ -140,6 +140,10 @@ export default function useCart() {
       }
       
       const data = await res.json();
+  console.log('DEBUG useCart - fetchCart response:', data);
+  console.log('DEBUG useCart - Cart items:', data?.items?.length || 0);
+  console.log('DEBUG useCart - Cart estado:', data?.estado);
+  console.log('DEBUG useCart - Cart ID:', data?.ID || data?.id);
   // update module/global store and notify listeners
   if (typeof window !== 'undefined') {
     (window as any).__globalCart = data;
@@ -248,6 +252,20 @@ export default function useCart() {
 
   useEffect(() => {
     fetchCart();
+    
+    // Escuchar cambios de autenticación para refrescar el carrito
+    const handleAuthChange = () => {
+      console.log('DEBUG useCart - Auth changed, refrescando carrito...');
+      setTimeout(() => {
+        fetchCart();
+      }, 100);
+    };
+    
+    window.addEventListener('auth:changed', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('auth:changed', handleAuthChange);
+    };
   }, [fetchCart]);
 
   return {

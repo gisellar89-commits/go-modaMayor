@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import CartIcon from "./CartIcon";
 import NotificationBell from "./NotificationBell";
 import useCart from "../hooks/useCart";
+import { getGuestCart } from "../utils/guestCart";
  
 
 export default function Navbar() {
@@ -14,6 +15,7 @@ export default function Navbar() {
   const user = auth?.user;
   const router = useRouter();
   const { cart } = useCart();
+  const [guestCartCount, setGuestCartCount] = useState(0);
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [subcategoriesMap, setSubcategoriesMap] = useState<Record<number, Array<{ id: number; name: string }>>>({});
   const [showProductsDropdown, setShowProductsDropdown] = useState(false);
@@ -24,6 +26,25 @@ export default function Navbar() {
   const mobilePanelRef = useRef<HTMLDivElement | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<Record<number, boolean>>({});
   // dropdownRef not needed
+
+  // Actualizar contador de carrito de invitado
+  useEffect(() => {
+    if (!user) {
+      const updateGuestCount = () => {
+        const guestItems = getGuestCart();
+        const totalQty = guestItems.reduce((sum, item) => sum + item.quantity, 0);
+        setGuestCartCount(totalQty);
+      };
+      
+      updateGuestCount();
+      
+      // Escuchar cambios en el carrito de invitado
+      window.addEventListener('guest-cart-updated', updateGuestCount);
+      return () => window.removeEventListener('guest-cart-updated', updateGuestCount);
+    } else {
+      setGuestCartCount(0);
+    }
+  }, [user]);
 
   useEffect(() => {
     // fetch public categories for menu (if endpoint exists)
@@ -170,10 +191,19 @@ export default function Navbar() {
             >
               {/* show cart icon and badges: orange for pending verification, red for total */}
               <CartIcon pendingCount={cart?.items ? cart.items.filter((it: any) => it.requires_stock_check && !it.stock_confirmed).length : 0} />
-              {cart?.items && cart.items.length > 0 && (
-                <span className="absolute -top-2 -right-3 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-gradient-to-r from-pink-500 to-pink-600 rounded-full shadow-lg border border-pink-700">
-                  {cart.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)}
-                </span>
+              {/* Mostrar contador del servidor o del invitado */}
+              {user ? (
+                cart?.items && cart.items.length > 0 && (
+                  <span className="absolute -top-2 -right-3 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-gradient-to-r from-pink-500 to-pink-600 rounded-full shadow-lg border border-pink-700">
+                    {cart.items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0)}
+                  </span>
+                )
+              ) : (
+                guestCartCount > 0 && (
+                  <span className="absolute -top-2 -right-3 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-gradient-to-r from-pink-500 to-pink-600 rounded-full shadow-lg border border-pink-700">
+                    {guestCartCount}
+                  </span>
+                )
               )}
             </a>
 

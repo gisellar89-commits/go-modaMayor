@@ -187,7 +187,7 @@ export default function TiposTallesPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Tipos de Talles</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Tipos de Talles</h1>
         <button
           onClick={() => {
             setEditingType(null);
@@ -219,7 +219,7 @@ export default function TiposTallesPage() {
           <div key={type.ID} className="border rounded-lg p-4 bg-white shadow">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h3 className="text-lg font-semibold">{type.name}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{type.name}</h3>
                 <p className="text-sm text-gray-600">Clave: <code className="bg-gray-100 px-1 rounded">{type.key}</code></p>
                 {type.description && <p className="text-sm text-gray-500 mt-1">{type.description}</p>}
                 {type.is_singleton && <span className="inline-block mt-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Talle único</span>}
@@ -268,7 +268,7 @@ export default function TiposTallesPage() {
                 {type.values && type.values.length > 0 ? (
                   type.values.map((val) => (
                     <div key={val.ID} className="bg-gray-100 px-3 py-1 rounded flex items-center gap-2">
-                      <span className="font-medium">{val.value}</span>
+                      <span className="font-medium text-gray-900">{val.value}</span>
                       <span className="text-xs text-gray-500">(orden: {val.ordinal})</span>
                       <button
                         onClick={() => {
@@ -302,38 +302,38 @@ export default function TiposTallesPage() {
       {showTypeForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">
               {editingType ? "Editar Tipo de Talle" : "Nuevo Tipo de Talle"}
             </h2>
             <form onSubmit={editingType ? handleUpdateType : handleCreateType} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Clave *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Clave *</label>
                 <input
                   type="text"
                   value={formType.key}
                   onChange={(e) => setFormType({ ...formType, key: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   required
                   placeholder="ej: letras, numericos"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Nombre *</label>
                 <input
                   type="text"
                   value={formType.name}
                   onChange={(e) => setFormType({ ...formType, name: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   required
                   placeholder="ej: Letras (S/M/L)"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Descripción</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Descripción</label>
                 <textarea
                   value={formType.description}
                   onChange={(e) => setFormType({ ...formType, description: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   rows={2}
                   placeholder="Descripción opcional"
                 />
@@ -346,7 +346,7 @@ export default function TiposTallesPage() {
                   onChange={(e) => setFormType({ ...formType, is_singleton: e.target.checked })}
                   className="w-4 h-4"
                 />
-                <label htmlFor="is_singleton" className="text-sm">Talle único (sin variantes)</label>
+                <label htmlFor="is_singleton" className="text-sm text-gray-900">Talle único (sin variantes)</label>
               </div>
               <div className="flex gap-2 justify-end">
                 <button
@@ -375,28 +375,28 @@ export default function TiposTallesPage() {
       {showValueForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">
               {editingValue ? "Editar Valor" : "Nuevo Valor"}
             </h2>
             <form onSubmit={editingValue ? handleUpdateValue : handleCreateValue} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Valor *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Valor *</label>
                 <input
                   type="text"
                   value={formValue.value}
                   onChange={(e) => setFormValue({ ...formValue, value: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   required
                   placeholder="ej: M, 42, XL"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Orden de visualización</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Orden de visualización</label>
                 <input
                   type="number"
                   value={formValue.ordinal}
                   onChange={(e) => setFormValue({ ...formValue, ordinal: Number(e.target.value) })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   placeholder="1, 2, 3..."
                 />
               </div>

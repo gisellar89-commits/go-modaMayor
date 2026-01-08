@@ -22,7 +22,8 @@ export default function SalesList({ orders, loading, statuses, onChangeStatus, o
       <table className="min-w-full">
         <thead>
           <tr className="bg-gray-50">
-            <th className="px-2 py-1 border">ID</th>
+            <th className="px-2 py-1 border">Orden ID</th>
+            <th className="px-2 py-1 border">Carrito ID</th>
             <th className="px-2 py-1 border">Cliente</th>
             <th className="px-2 py-1 border">Estado</th>
             <th className="px-2 py-1 border">Total</th>

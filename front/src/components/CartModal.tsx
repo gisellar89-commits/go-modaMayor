@@ -6,12 +6,16 @@ import useCart from "../hooks/useCart";
 import useCartSummary from "../hooks/useCartSummary";
 import useCartStockCheck from "../hooks/useCartStockCheck";
 import { resolveImageUrl, API_BASE } from "../utils/api";
+import { getGuestCart, removeFromGuestCart, updateGuestCartQuantity, clearGuestCart, GuestCartItem } from "../utils/guestCart";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function CartModal() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [animateIn, setAnimateIn] = useState(false);
   const router = useRouter();
+  const auth = useAuth();
+  const user = auth?.user;
   const { cart, message, removeFromCart, updateQuantityVariant, clearCart, fetchCart } = useCart();
   const { summary, refetch: refetchSummary } = useCartSummary(true); // Habilitar notificaciones aquí
   const { stockIssues, allAvailable, recheckStock } = useCartStockCheck();
@@ -20,7 +24,32 @@ export default function CartModal() {
   const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-renders
   const messageTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
+  const [guestCart, setGuestCart] = useState<GuestCartItem[]>([]);
   useFocusTrap(containerRef, open);
+
+  // Cargar carrito de invitado y escuchar cambios
+  useEffect(() => {
+    if (!user) {
+      // Cargar carrito de invitado desde localStorage
+      const items = getGuestCart();
+      console.log('DEBUG - Carrito cargado del localStorage:', items);
+      setGuestCart(items);
+      
+      // Escuchar cambios en el carrito de invitado
+      const handleGuestCartUpdate = (e: Event) => {
+        const customEvent = e as CustomEvent<GuestCartItem[]>;
+        const updatedItems = customEvent.detail || getGuestCart();
+        console.log('DEBUG - Carrito actualizado:', updatedItems);
+        setGuestCart(updatedItems);
+      };
+      
+      window.addEventListener('guest-cart-updated', handleGuestCartUpdate);
+      
+      return () => {
+        window.removeEventListener('guest-cart-updated', handleGuestCartUpdate);
+      };
+    }
+  }, [user]);
 
   useEffect(() => {
     // open if pathname is /carrito on mount
@@ -113,8 +142,13 @@ export default function CartModal() {
   const items = cart?.items ?? [];
   const summaryItems = summary?.items ?? [];
   
+  // Si no hay usuario, usar carrito de invitado
+  const hasServerItems = items.length > 0;
+  const hasGuestItems = guestCart.length > 0;
+  const isGuest = !user;
+  
   // Usar los precios del summary si están disponibles, sino usar cálculo original
-  const useDynamicPricing = summaryItems.length > 0;
+  const useDynamicPricing = summaryItems.length > 0 && !isGuest;
   
   let subtotalOriginal = 0;
   let totalDiscount = 0;
@@ -222,6 +256,12 @@ export default function CartModal() {
     }
     return acc;
   }, 0);
+
+  // Calcular totales para carrito de invitado
+  const guestSubtotal = guestCart.reduce((acc, item) => {
+    return acc + ((item.metadata?.wholesale_price || 0) * item.quantity);
+  }, 0);
+  const guestTotalQuantity = guestCart.reduce((acc, item) => acc + item.quantity, 0);
 
   const handleCloseClick = () => {
     // animate and close
@@ -354,8 +394,136 @@ export default function CartModal() {
           </div>
         )}
 
+        {/* Mensaje de carrito vacío */}
+        {!hasGuestItems && !hasServerItems && (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🛒</div>
+            <p className="text-gray-600 text-lg mb-4">Tu carrito está vacío</p>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setAnimateIn(false);
+                setTimeout(() => {
+                  if (window.location.pathname === "/carrito") window.history.back();
+                  setOpen(false);
+                  router.push('/productos');
+                }, 300);
+              }}
+              className="bg-gradient-to-r from-pink-500 to-yellow-500 text-white px-6 py-3 rounded-lg font-medium hover:from-pink-600 hover:to-yellow-600 transition-all"
+            >
+              Ver productos
+            </button>
+          </div>
+        )}
+
+        {/* Banner de invitado */}
+        {isGuest && hasGuestItems && (
+          <div className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">💡</span>
+              <div className="flex-1">
+                <p className="text-blue-800 font-medium mb-2">
+                  Inicia sesión para acceder a mejores precios por volumen y finalizar tu compra.
+                </p>
+                <button
+                  onClick={() => {
+                    handleCloseClick();
+                    router.push('/login');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all"
+                >
+                  Iniciar sesión
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
-          {itemsWithPricing.map(({ item, qty, originalUnit, unitPrice, lineFinal, hasTierDiscount }: any) => {
+          {/* Items de carrito de invitado */}
+          {isGuest && guestCart.map((guestItem) => {
+            const key = guestItem.variant_id ? `${guestItem.product_id}-${guestItem.variant_id}` : String(guestItem.product_id);
+            const imgSrc = resolveImageUrl(guestItem.metadata?.image_url ?? null);
+            
+            console.log('DEBUG CartModal - Item invitado:', {
+              guestItem,
+              imgSrc,
+              metadata: guestItem.metadata
+            });
+            
+            return (
+              <div key={key} className="flex items-start gap-3 bg-white rounded-xl p-4 shadow-sm border border-pink-100 hover:shadow-md transition-all">
+                {imgSrc ? (
+                  <img src={imgSrc as string} alt={guestItem.metadata?.product_name || 'Producto'} className="w-20 h-20 object-cover rounded-lg border-2 border-pink-100" />
+                ) : (
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center text-xs text-gray-500 border-2 border-gray-200">Sin imagen</div>
+                )}
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="font-bold text-gray-800">{guestItem.metadata?.product_name || 'Producto'}</div>
+                      {(guestItem.metadata?.color || guestItem.metadata?.size) && (
+                        <div className="text-sm text-gray-600 mt-1">
+                          {guestItem.metadata?.color ? <span className="text-pink-600">🎨 {guestItem.metadata.color}</span> : ''} 
+                          {guestItem.metadata?.size ? <span className="text-pink-600"> · 📏 {guestItem.metadata.size}</span> : ''}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm text-right">
+                      <span className="text-base font-bold bg-gradient-to-r from-yellow-500 to-pink-500 bg-clip-text text-transparent">
+                        ${guestItem.metadata?.wholesale_price?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 rounded-lg font-bold text-pink-600 transition-all"
+                        onClick={() => {
+                          const next = Math.max(1, guestItem.quantity - 1);
+                          updateGuestCartQuantity(guestItem.product_id, guestItem.variant_id, next);
+                        }}
+                      >
+                        -
+                      </button>
+                      <div className="w-16 text-center py-1.5 border-2 border-pink-200 rounded-lg font-semibold text-gray-800 bg-white">
+                        {guestItem.quantity}
+                      </div>
+                      <button
+                        className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 rounded-lg font-bold text-pink-600 transition-all"
+                        onClick={() => {
+                          const next = guestItem.quantity + 1;
+                          updateGuestCartQuantity(guestItem.product_id, guestItem.variant_id, next);
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-base font-bold bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
+                        ${((guestItem.metadata?.wholesale_price || 0) * guestItem.quantity).toFixed(2)}
+                      </div>
+                      <button
+                        title="Quitar"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-all"
+                        onClick={() => {
+                          removeFromGuestCart(guestItem.product_id, guestItem.variant_id);
+                        }}
+                        aria-label="Quitar del carrito"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Items de carrito del servidor (usuarios logueados) */}
+          {!isGuest && itemsWithPricing.map(({ item, qty, originalUnit, unitPrice, lineFinal, hasTierDiscount }: any) => {
             const key = item.variant_id ? `${item.product_id}-${item.variant_id}` : String(item.product_id);
             const imgSrc = resolveImageUrl(item.product_image ?? item.product?.image_url ?? item.product?.image ?? (item.product?.images && item.product.images[0]) ?? null);
             const savings = originalUnit - unitPrice;
@@ -497,7 +665,7 @@ export default function CartModal() {
           </div>
 
           {/* Tier actual y progreso hacia el siguiente */}
-          {summary?.tier && (
+          {!isGuest && summary?.tier && (
             <div className="mb-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -536,70 +704,94 @@ export default function CartModal() {
             </div>
           )}
 
-          <div className="bg-gradient-to-r from-yellow-50 to-pink-50 rounded-xl p-4 mb-4 border border-pink-200">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-gray-700">
-                <div className="font-medium">Subtotal</div>
-                <div className="font-semibold">
-                  {totalSavings > 0.01 ? (
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-xs line-through text-gray-400">${(subtotal + totalSavings).toFixed(2)}</span>
-                      <span className="text-base">${subtotal.toFixed(2)}</span>
-                    </div>
-                  ) : (
-                    <span>${subtotal.toFixed(2)}</span>
-                  )}
+          {/* Totales */}
+          {isGuest ? (
+            // Totales para invitados
+            <div className="bg-gradient-to-r from-yellow-50 to-pink-50 rounded-xl p-4 mb-4 border border-pink-200">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-gray-700">
+                  <div className="font-medium">Cantidad total</div>
+                  <div className="font-semibold">{guestTotalQuantity} prendas</div>
                 </div>
-              </div>
-              {totalSavings > 0.01 && (
-                <div className="flex items-center justify-between text-sm text-green-600">
-                  <div className="font-medium">Descuento por tier</div>
-                  <div className="font-semibold">-${totalSavings.toFixed(2)}</div>
-                </div>
-              )}
-              {totalDiscount > 0 && (
-                <div className="flex items-center justify-between text-sm text-red-600">
-                  <div className="font-medium">Otros descuentos</div>
-                  <div className="font-semibold">-${totalDiscount.toFixed(2)}</div>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-xl font-bold pt-2 border-t border-pink-200">
-                <div>Total</div>
-                <div className="bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
-                  ${total.toFixed(2)}
-                </div>
-              </div>
-              {totalSavings > 0.01 && (
-                <div className="flex items-center justify-center pt-2">
-                  <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md">
-                    🎉 ¡Ahorrás ${totalSavings.toFixed(2)} con este tier!
+                <div className="flex items-center justify-between text-xl font-bold pt-2 border-t border-pink-200">
+                  <div>Total estimado</div>
+                  <div className="bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
+                    ${guestSubtotal.toFixed(2)}
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-600 mb-3 bg-white rounded-lg p-3 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <span>✓ Prendas confirmadas:</span>
-              <span className="font-bold text-green-600">{confirmedQuantity}</span>
-            </div>
-            {pendingQuantity > 0 && (
-              <div className="flex items-center justify-between mt-1">
-                <span>⏳ Prendas pendientes:</span>
-                <span className="font-bold text-orange-600">{pendingQuantity}</span>
               </div>
-            )}
-          </div>
-          
-          {pendingQuantity > 0 && (
-            <div className="text-xs text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
-              <strong>Nota:</strong> {pendingQuantity} prenda(s) están pendientes de verificación por la vendedora y no se incluyen en el total mostado.
             </div>
+          ) : (
+            // Totales para usuarios logueados
+            <div className="bg-gradient-to-r from-yellow-50 to-pink-50 rounded-xl p-4 mb-4 border border-pink-200">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm text-gray-700">
+                  <div className="font-medium">Subtotal</div>
+                  <div className="font-semibold">
+                    {totalSavings > 0.01 ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-xs line-through text-gray-400">${(subtotal + totalSavings).toFixed(2)}</span>
+                        <span className="text-base">${subtotal.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span>${subtotal.toFixed(2)}</span>
+                    )}
+                  </div>
+                </div>
+                {totalSavings > 0.01 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <div className="font-medium">Descuento por tier</div>
+                    <div className="font-semibold">-${totalSavings.toFixed(2)}</div>
+                  </div>
+                )}
+                {totalDiscount > 0 && (
+                  <div className="flex items-center justify-between text-sm text-red-600">
+                    <div className="font-medium">Otros descuentos</div>
+                    <div className="font-semibold">-${totalDiscount.toFixed(2)}</div>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xl font-bold pt-2 border-t border-pink-200">
+                  <div>Total</div>
+                  <div className="bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
+                    ${total.toFixed(2)}
+                  </div>
+                </div>
+                {totalSavings > 0.01 && (
+                  <div className="flex items-center justify-center pt-2">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md">
+                      🎉 ¡Ahorrás ${totalSavings.toFixed(2)} con este tier!
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isGuest && (
+            <>
+              <div className="text-sm text-gray-600 mb-3 bg-white rounded-lg p-3 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span>✓ Prendas confirmadas:</span>
+                  <span className="font-bold text-green-600">{confirmedQuantity}</span>
+                </div>
+                {pendingQuantity > 0 && (
+                  <div className="flex items-center justify-between mt-1">
+                    <span>⏳ Prendas pendientes:</span>
+                    <span className="font-bold text-orange-600">{pendingQuantity}</span>
+                  </div>
+                )}
+              </div>
+              
+              {pendingQuantity > 0 && (
+                <div className="text-xs text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                  <strong>Nota:</strong> {pendingQuantity} prenda(s) están pendientes de verificación por la vendedora y no se incluyen en el total mostado.
+                </div>
+              )}
+            </>
           )}
           
           {/* Mensaje si no alcanza el mínimo para compra mayorista */}
-          {confirmedQuantity < 6 && (
+          {!isGuest && confirmedQuantity < 6 && (
             <div className="text-sm text-gray-700 mb-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
               <div className="flex items-start gap-2">
                 <span className="text-xl">ℹ️</span>
@@ -617,7 +809,7 @@ export default function CartModal() {
           )}
           
           <div className="flex flex-col gap-3">
-            {cart?.items && cart.items.length > 0 && (
+            {!isGuest && cart?.items && cart.items.length > 0 && (
               <button
                 onClick={async () => {
                   if (!cart) return;
@@ -642,11 +834,9 @@ export default function CartModal() {
                       setInfoMessage(successMsg);
                       if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
                       messageTimerRef.current = window.setTimeout(() => setInfoMessage(null), 6000);
-                      try {
-                        await clearCart();
-                      } catch (e) {
-                        await fetchCart();
-                      }
+                      // No llamar clearCart() para evitar notificaciones de tier_lost
+                      // El backend ya convirtió el carrito en orden, solo refrescamos el estado
+                      await fetchCart();
                       setAnimateIn(false);
                       setTimeout(() => {
                         if (window.location.pathname === "/carrito") window.history.back();
@@ -671,7 +861,13 @@ export default function CartModal() {
             )}
             
             <button 
-              onClick={() => clearCart()} 
+              onClick={() => {
+                if (isGuest) {
+                  clearGuestCart();
+                } else {
+                  clearCart();
+                }
+              }} 
               className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium transition-all text-gray-700"
             >
               🗑️ Vaciar carrito

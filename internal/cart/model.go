@@ -2,16 +2,22 @@ package cart
 
 import (
 	"go-modaMayor/internal/product"
+	"go-modaMayor/internal/user"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 type Cart struct {
 	gorm.Model
-	UserID     uint       `json:"user_id"`
-	VendedorID uint       `json:"vendedor_id"`
-	Estado     string     `json:"estado" gorm:"default:'pendiente'"`
-	Items      []CartItem `json:"items" gorm:"foreignKey:CartID"`
+	UserID     uint             `json:"user_id"`
+	User       user.User        `json:"user" gorm:"foreignKey:UserID"`
+	VendedorID uint             `json:"vendedor_id"`
+	Estado     string           `json:"estado" gorm:"default:'pendiente'"`
+	Items      []CartItem       `json:"items" gorm:"foreignKey:CartID"`
+	// Expiration tracking for reserved stock
+	ReservedAt *time.Time `json:"reserved_at,omitempty"` // When cart moved to 'listo_para_pago'
+	ExpiresAt  *time.Time `json:"expires_at,omitempty"`  // When reservation expires (24h after ReservedAt)
 }
 
 type CartItem struct {

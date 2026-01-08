@@ -15,6 +15,7 @@ import (
 type RegisterInput struct {
 	Name     string `json:"name" binding:"required,min=2,max=100"`
 	Email    string `json:"email" binding:"required,email"`
+	Phone    string `json:"phone" binding:"required,max=20"`
 	Password string `json:"password" binding:"required,min=6,max=100"`
 }
 
@@ -36,6 +37,7 @@ func Register(c *gin.Context) {
 	user := User{
 		Name:  input.Name,
 		Email: normalizedEmail,
+		Phone: input.Phone,
 		Role:  "cliente",
 	}
 	// Hashear la contraseña
@@ -153,10 +155,14 @@ func DeleteUser(c *gin.Context) {
 
 // Input para crear usuario con rol
 type CreateUserWithRoleInput struct {
-	Name     string `json:"name" binding:"required,min=2,max=100"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6,max=100"`
-	Role     string `json:"role" binding:"required,oneof=admin encargado vendedor cliente"`
+	Name        string `json:"name" binding:"required,min=2,max=100"`
+	Email       string `json:"email" binding:"required,email"`
+	Phone       string `json:"phone" binding:"required,max=20"`
+	Password    string `json:"password" binding:"required,min=6,max=100"`
+	Role        string `json:"role" binding:"required,oneof=admin encargado vendedor cliente"`
+	Active      bool   `json:"active"`
+	WorkingFrom string `json:"working_from"`
+	WorkingTo   string `json:"working_to"`
 }
 
 // Handler para crear usuario con rol personalizado (solo admin)
@@ -179,10 +185,14 @@ func CreateUserWithRole(c *gin.Context) {
 		return
 	}
 	user := User{
-		Name:     input.Name,
-		Email:    normalizedEmail,
-		Password: string(hash),
-		Role:     input.Role,
+		Name:        input.Name,
+		Email:       normalizedEmail,
+		Phone:       input.Phone,
+		Password:    string(hash),
+		Role:        input.Role,
+		Active:      input.Active,
+		WorkingFrom: input.WorkingFrom,
+		WorkingTo:   input.WorkingTo,
 	}
 	if err := config.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

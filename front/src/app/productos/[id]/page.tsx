@@ -5,6 +5,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { fetchProductById, Product, LocationStock, resolveImageUrl, API_BASE } from "../../../utils/api";
 import Link from "next/link";
 import useCart from "../../../hooks/useCart";
+import { addToGuestCart, calculateGuestPrice } from "../../../utils/guestCart";
 
 export default function DetalleProductoPage() {
   const { id } = useParams();
@@ -108,6 +109,60 @@ export default function DetalleProductoPage() {
 
   const handleAddToCart = async () => {
     setAddStatus(null);
+    
+    // Si no está logueado, guardar en localStorage
+    if (!user) {
+      try {
+        // Calcular precio base para invitado
+        const priceData = await calculateGuestPrice(
+          product?.ID ?? product?.id,
+          quantity
+        );
+        
+        console.log('DEBUG - Datos del producto:', {
+          name: product?.name,
+          image_url: product?.image_url,
+          wholesale_price: product?.wholesale_price,
+          priceData,
+          variant: varianteSeleccionada
+        });
+        
+        // Guardar en carrito local con toda la metadata
+        const itemToAdd = {
+          product_id: product?.ID ?? product?.id,
+          variant_id: varianteSeleccionada?.ID || varianteSeleccionada?.id,
+          quantity,
+          metadata: {
+            product_name: product?.name,
+            variant_name: varianteSeleccionada
+              ? `${varianteSeleccionada.color || ''} ${varianteSeleccionada.size || ''}`.trim()
+              : undefined,
+            image_url: varianteSeleccionada?.image_url || product?.image_url,
+            wholesale_price: priceData?.unit_price || product?.wholesale_price || 0,
+            color: varianteSeleccionada?.color,
+            size: varianteSeleccionada?.size,
+          },
+        };
+        
+        console.log('DEBUG - Item a agregar al carrito:', itemToAdd);
+        addToGuestCart(itemToAdd);
+        
+        // Mostrar notificación con sugerencia de login
+        setAddStatus(
+          `Producto agregado. 💡 Inicia sesión para acceder a mejores precios por volumen y finalizar tu compra.`
+        );
+        
+        // Disparar evento para actualizar contador de carrito
+        window.dispatchEvent(new CustomEvent('guest-cart-updated'));
+        
+        return;
+      } catch (e: any) {
+        setAddStatus(e.message || "Error al agregar al carrito");
+        return;
+      }
+    }
+    
+    // Usuario logueado: usar API normal
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') ?? undefined : undefined;
       const res = await fetch(`${API_BASE}/cart/add`, {
@@ -115,11 +170,20 @@ export default function DetalleProductoPage() {
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ product_id: product?.ID ?? product?.id, variant_id: varianteSeleccionada?.ID || varianteSeleccionada?.id, quantity, requires_stock_check: false }),
       });
+      
+      const data = await res.json().catch(() => null);
+      
+      // Verificar si el backend indicó que requiere login
+      if (data?.requires_login) {
+        setAddStatus(data.message || "Por favor inicia sesión para agregar al carrito");
+        return;
+      }
+      
       if (!res.ok) throw new Error("No se pudo agregar al carrito");
-  const data = await res.json().catch(() => null);
-  // debug: log server response for add-to-cart
-  // eslint-disable-next-line no-console
-  console.log('POST /cart/add response', data);
+      
+      // debug: log server response for add-to-cart
+      // eslint-disable-next-line no-console
+      console.log('POST /cart/add response', data);
       setAddStatus("Producto agregado al carrito");
       // if backend returned the updated cart, update local cart immediately; otherwise fallback to fetchCart
       if (data && data.cart) {
@@ -148,6 +212,13 @@ export default function DetalleProductoPage() {
 
   const handleConsultStock = async () => {
     setAddStatus(null);
+    
+    // Si no está logueado, mostrar mensaje indicando que debe loguearse
+    if (!user) {
+      setAddStatus("⚠️ Debes iniciar sesión para solicitar asistencia de una vendedora y verificar stock disponible.");
+      return;
+    }
+    
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') ?? undefined : undefined;
       const res = await fetch(`${API_BASE}/cart/add`, {

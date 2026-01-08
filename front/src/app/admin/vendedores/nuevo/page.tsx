@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 export default function NuevoVendedorPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("vendedor");
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function NuevoVendedorPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, phone, password, role }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -42,7 +43,7 @@ export default function NuevoVendedorPage() {
 
   return (
     <main className="p-8 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Nuevo vendedor/encargado</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900">Nuevo vendedor/encargado</h1>
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -50,7 +51,7 @@ export default function NuevoVendedorPage() {
           value={name}
           onChange={e => setName(e.target.value)}
           required
-          className="border px-2 py-1 rounded"
+          className="border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
         />
         <input
           type="email"
@@ -58,7 +59,15 @@ export default function NuevoVendedorPage() {
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
-          className="border px-2 py-1 rounded"
+          className="border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
+        />
+        <input
+          type="tel"
+          placeholder="Teléfono"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+          required
+          className="border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
         />
         <input
           type="password"
@@ -67,12 +76,12 @@ export default function NuevoVendedorPage() {
           onChange={e => setPassword(e.target.value)}
           required
           minLength={6}
-          className="border px-2 py-1 rounded"
+          className="border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
         />
         <select
           value={role}
           onChange={e => setRole(e.target.value)}
-          className="border px-2 py-1 rounded"
+          className="border px-3 py-2 rounded text-gray-900"
         >
           <option value="vendedor">Vendedor</option>
           <option value="encargado">Encargado</option>

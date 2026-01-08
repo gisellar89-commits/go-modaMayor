@@ -109,7 +109,7 @@ export default function ColoresPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Colores</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Colores</h1>
         <button
           onClick={() => {
             setEditing(null);
@@ -146,7 +146,7 @@ export default function ColoresPage() {
                 title={color.hex}
               />
               <div className="flex-1">
-                <h3 className="font-semibold text-lg">{color.name}</h3>
+                <h3 className="font-semibold text-lg text-gray-900">{color.name}</h3>
                 <p className="text-sm text-gray-600">
                   Clave: <code className="bg-gray-100 px-1 rounded">{color.key}</code>
                 </p>
@@ -201,35 +201,35 @@ export default function ColoresPage() {
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">
               {editing ? "Editar Color" : "Nuevo Color"}
             </h2>
             <form onSubmit={editing ? handleUpdate : handleCreate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Clave *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Clave *</label>
                 <input
                   type="text"
                   value={form.key}
                   onChange={(e) => setForm({ ...form, key: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   required
                   placeholder="ej: negro, azul-marino"
                 />
                 <p className="text-xs text-gray-500 mt-1">Identificador único sin espacios</p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Nombre *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Nombre *</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full border px-3 py-2 rounded"
+                  className="w-full border px-3 py-2 rounded text-gray-900 placeholder:text-gray-400"
                   required
                   placeholder="ej: Negro, Azul Marino"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Color (Hex) *</label>
+                <label className="block text-sm font-medium mb-1 text-gray-900">Color (Hex) *</label>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -241,7 +241,7 @@ export default function ColoresPage() {
                     type="text"
                     value={form.hex}
                     onChange={(e) => setForm({ ...form, hex: e.target.value })}
-                    className="flex-1 border px-3 py-2 rounded font-mono"
+                    className="flex-1 border px-3 py-2 rounded font-mono text-gray-900 placeholder:text-gray-400"
                     placeholder="#000000"
                     pattern="^#[0-9A-Fa-f]{6}$"
                   />
@@ -256,7 +256,7 @@ export default function ColoresPage() {
                   onChange={(e) => setForm({ ...form, active: e.target.checked })}
                   className="w-4 h-4"
                 />
-                <label htmlFor="active" className="text-sm">Activo</label>
+                <label htmlFor="active" className="text-sm text-gray-900">Activo</label>
               </div>
               
               {/* Preview */}
@@ -268,7 +268,7 @@ export default function ColoresPage() {
                     style={{ backgroundColor: form.hex }}
                   />
                   <div>
-                    <p className="font-medium">{form.name || "Nombre del color"}</p>
+                    <p className="font-medium text-gray-900">{form.name || "Nombre del color"}</p>
                     <p className="text-sm text-gray-600 font-mono">{form.hex}</p>
                   </div>
                 </div>
