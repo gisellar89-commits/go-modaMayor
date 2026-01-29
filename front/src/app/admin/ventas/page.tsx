@@ -53,7 +53,8 @@ export default function AdminVentasPage() {
     return true;
   });
 
-  const statuses = ["creada", "procesando", "enviada", "finalizada", "cancelada"];
+  // Estados del carrito que también usa el vendedor
+  const statuses = ["esperando_vendedora", "listo_para_pago", "pagado", "enviado", "completado", "cancelado"];
 
   return (
     <div className="p-4">
@@ -70,13 +71,8 @@ export default function AdminVentasPage() {
         onOpen={(o) => setModalOrder(o)}
         onRequestChangeStatus={(id, status) => {
           if (!status) return;
-          const s = status.toLowerCase();
-          if (dangerousStatuses.includes(s)) {
-            setConfirm({ id, status });
-          } else {
-            // apply immediately for non-dangerous statuses
-            void changeStatus(id, status);
-          }
+          // Siempre pedir confirmación antes de cambiar el estado
+          setConfirm({ id, status });
         }}
         sellers={role === "vendedor" ? [] : sellers}
         onAssign={async (id, sellerId) => {
@@ -98,11 +94,11 @@ export default function AdminVentasPage() {
         }}
       />
 
-      {/* Confirm dialog only for dangerous statuses */}
+      {/* Confirm dialog for all status changes */}
       <ConfirmDialog
         open={!!confirm}
-        title={confirm?.status === "cancelada" ? "Atención: cancelar pedido" : "Confirmar cambio de estado"}
-        message={confirm?.status === "cancelada" ? "Este pedido se marcará como cancelado. Esta acción puede ser irreversible. ¿Deseas continuar?" : `Cambiar estado a "${confirm?.status}"?`}
+        title="Confirmar cambio de estado"
+        message={`¿Cambiar estado a "${confirm?.status}"? Este cambio también actualizará el estado del carrito asociado.`}
         onConfirm={async () => {
           if (confirm?.id) {
             await changeStatus(confirm.id, confirm.status || "");
@@ -111,7 +107,7 @@ export default function AdminVentasPage() {
         }}
         onCancel={() => setConfirm(null)}
       />
-  <OrderDetailModal open={!!modalOrder} order={modalOrder} onClose={() => setModalOrder(null)} />
+  <OrderDetailModal open={!!modalOrder} order={modalOrder} onClose={() => setModalOrder(null)} isAdminView={true} />
     </div>
   );
 }

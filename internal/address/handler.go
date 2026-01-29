@@ -25,9 +25,28 @@ func ListUserAddresses(db *gorm.DB) gin.HandlerFunc {
 		userRole, _ := c.Get("user_role")
 		// Si no es admin ni encargado, solo puede ver sus propias direcciones
 		if userRole != "admin" && userRole != "encargado" {
-			// Convertir userIDClaim a string para comparar
-			userIDStr := fmt.Sprintf("%v", userIDClaim)
-			if userIDStr != userID {
+			// Convertir ambos a int para comparar correctamente
+			requestedUserID, err := strconv.Atoi(userID)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "ID de usuario inválido"})
+				return
+			}
+			
+			// userIDClaim puede ser float64 o int según JSON decode
+			var claimUserID int
+			switch v := userIDClaim.(type) {
+			case float64:
+				claimUserID = int(v)
+			case int:
+				claimUserID = v
+			case uint:
+				claimUserID = int(v)
+			default:
+				claimUserIDStr := fmt.Sprintf("%v", userIDClaim)
+				claimUserID, _ = strconv.Atoi(claimUserIDStr)
+			}
+			
+			if claimUserID != requestedUserID {
 				c.JSON(http.StatusForbidden, gin.H{"error": "No tienes permiso para ver estas direcciones"})
 				return
 			}

@@ -81,6 +81,8 @@ export type Order = {
   id?: number;
   user_id?: number;
   User?: { ID?: number; id?: number; name?: string; email?: string } | null;
+  assigned_to?: number;
+  AssignedToUser?: { ID?: number; id?: number; name?: string; email?: string } | null;
   status?: string;
   total?: number;
   items?: OrderItem[];
@@ -93,6 +95,8 @@ function normalizeOrder(o: any): Order {
     id: o.ID ?? o.id,
     user_id: o.UserID ?? o.user_id ?? o.user?.ID ?? o.user?.id,
     User: o.User ?? o.user ?? null,
+    assigned_to: o.AssignedTo ?? o.assigned_to,
+    AssignedToUser: o.AssignedToUser ?? o.assignedToUser ?? null,
     status: o.Status ?? o.status,
     total: o.Total ?? o.total ?? 0,
     items: Array.isArray(o.Items ?? o.items)
@@ -101,6 +105,9 @@ function normalizeOrder(o: any): Order {
           id: it.ID ?? it.id,
           product_id: it.ProductID ?? it.product_id ?? it.product?.ID ?? it.product?.id,
           product: it.Product ?? it.product ?? null,
+          variant_id: it.VariantID ?? it.variant_id,
+          variant_size: it.VariantSize ?? it.variant_size,
+          variant_color: it.VariantColor ?? it.variant_color,
           quantity: it.Quantity ?? it.quantity,
           price: it.Price ?? it.price,
         }))

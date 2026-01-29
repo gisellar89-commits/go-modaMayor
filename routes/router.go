@@ -1,3 +1,4 @@
+
 package routes
 
 import (
@@ -10,6 +11,7 @@ import (
 	"go-modaMayor/internal/notification"
 	"go-modaMayor/internal/order"
 	"go-modaMayor/internal/product"
+	"go-modaMayor/internal/remito"
 	"go-modaMayor/internal/settings/handler"
 	"go-modaMayor/internal/user"
 
@@ -21,12 +23,14 @@ import (
 func SetupRouter(db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"}, // Permitir frontend en 3000 y 3001
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+	AllowOrigins:     []string{"http://localhost:3000", "http://localhost:3001"}, // Permitir frontend en 3000 y 3001
+	AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+	AllowHeaders:     []string{"Authorization", "Content-Type"},
+	ExposeHeaders:    []string{"Content-Length"},
+	AllowCredentials: true,
+}))
+// Auditoría por entidad e ID
+	r.GET("/audit/logs/:entity/:id", user.AuthMiddleware(), user.RequireRole("admin"), audit.ListAuditLogsByEntity)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -108,7 +112,7 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.PUT("/addresses/:id/set-default", user.AuthMiddleware(), address.SetDefaultAddress(db))
 
 	r.GET("/orders", user.AuthMiddleware(), user.RequireRole("admin"), order.ListAllOrders)
-	r.PUT("/orders/:id/status", user.AuthMiddleware(), user.RequireRole("admin"), order.UpdateOrderStatus)
+	r.PUT("/orders/:id/status", user.AuthMiddleware(), user.RequireAnyRole("admin", "vendedor"), order.UpdateOrderStatus)
 	r.GET("/audit/logs", user.AuthMiddleware(), user.RequireRole("admin"), audit.ListAuditLogs)
 	// Crear usuarios del sistema (solo admin)
 	r.POST("/users", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), user.CreateUserWithRole)
@@ -270,6 +274,14 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// Contact settings (configuración de contacto)
 	r.GET("/settings/contact", handler.GetContactSettings)
 	r.PUT("/settings/contact", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.UpdateContactSettings)
+
+	// Remitos internos (traslados de stock entre ubicaciones)
+	// Solo admin y encargado pueden ver y confirmar remitos
+	r.GET("/remitos-internos/pendientes", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.ListRemitosInternosPendientes)
+	r.GET("/remitos-internos/historico", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.ListRemitosInternosHistorico)
+	r.GET("/remitos-internos/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.GetRemitoInterno)
+	r.POST("/remitos-internos/:id/confirmar", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.ConfirmarRecepcionRemito)
+	r.GET("/carts/:cart_id/remitos-internos", user.AuthMiddleware(), user.RequireAnyRole("admin", "vendedora", "encargado"), remito.GetRemitosByCart)
 
 	return r
 }

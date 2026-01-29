@@ -4,6 +4,7 @@ import (
 	"errors"
 	"go-modaMayor/config"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +26,23 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Validar formato de teléfono argentino (10-11 dígitos)
+	phone := strings.TrimSpace(input.Phone)
+	// Remover espacios, guiones, paréntesis
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+	phone = strings.ReplaceAll(phone, "(", "")
+	phone = strings.ReplaceAll(phone, ")", "")
+	phone = strings.ReplaceAll(phone, "+54", "") // Remover código de país si está presente
+	
+	// Validar que solo tenga dígitos y sea de 10-11 caracteres
+	phoneRegex := regexp.MustCompile(`^[0-9]{10,11}$`)
+	if !phoneRegex.MatchString(phone) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "El teléfono debe ser un número argentino válido (10-11 dígitos). Ejemplo: 1145678901"})
+		return
+	}
+	
 	// normalizar email (trim + lowercase) y comprobar existencia previa
 	normalizedEmail := strings.ToLower(strings.TrimSpace(input.Email))
 	var exists User
@@ -37,7 +55,7 @@ func Register(c *gin.Context) {
 	user := User{
 		Name:  input.Name,
 		Email: normalizedEmail,
-		Phone: input.Phone,
+		Phone: phone, // Usar el teléfono limpio
 		Role:  "cliente",
 	}
 	// Hashear la contraseña

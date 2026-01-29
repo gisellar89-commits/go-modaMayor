@@ -7,6 +7,7 @@ import Footer from "../components/Footer";
 import CartModal from "../components/CartModal";
 import WhatsAppButton from "../components/WhatsAppButton";
 import PriceNotification from "../components/PriceNotification";
+import AddressReminderBanner from "../components/AddressReminderBanner";
 import { AuthProvider } from "../contexts/AuthContext";
 import { Toaster } from "react-hot-toast";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
           <div className="w-full">
             <TopBar />
             <Navbar />
+            <AddressReminderBanner />
           </div>
           <Toaster />
           <main className="min-h-screen w-full">
@@ -49,6 +51,7 @@ export default function RootLayout({
           <WhatsAppButton />
           <PriceNotification />
         </AuthProvider>
+      <script src="/debugProducts.js"></script>
       </body>
     </html>
   );

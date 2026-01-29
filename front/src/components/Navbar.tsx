@@ -214,12 +214,12 @@ export default function Navbar() {
           </li>
           {user && ["admin", "encargado", "vendedor"].includes(user.role) && (
             <li>
-              <Link href="/admin" className="text-yellow-400 hover:text-pink-400 font-medium transition-colors">Admin</Link>
-            </li>
-          )}
-          {user && user.role === 'vendedor' && (
-            <li>
-              <Link href="/vendedora/carritos" className="text-yellow-400 hover:text-pink-400 font-medium transition-colors">Vendedora</Link>
+              <Link 
+                href={user.role === 'vendedor' ? '/vendedora/ordenes' : '/admin'} 
+                className="text-yellow-400 hover:text-pink-400 font-medium transition-colors"
+              >
+                Dashboard
+              </Link>
             </li>
           )}
           {!user && (

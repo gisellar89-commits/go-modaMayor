@@ -105,45 +105,79 @@ export default function HomeVideos() {
   );
 }
 
+// ...existing code...
+
 function ExternalVideoEmbed({ url, poster }: { url?: string; poster?: string }) {
+  const [igError, setIgError] = useState(false);
   if (!url) return null;
   // detect youtube, vimeo, instagram
   if (url.includes('youtube.com') || url.includes('youtu.be')) {
     const idMatch = url.match(/(v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
     const id = idMatch ? idMatch[2] : null;
     if (!id) return <a href={url} className="block p-4">Abrir en YouTube</a>;
-  const embed = `https://www.youtube.com/embed/${id}`;
-  return <iframe src={embed} className="block" style={{ width: 'auto', height: '100%' }} frameBorder={0} allowFullScreen />;
+    const embed = `https://www.youtube.com/embed/${id}`;
+    return <iframe src={embed} className="block" style={{ width: 'auto', height: '100%' }} frameBorder={0} allowFullScreen />;
   }
   if (url.includes('vimeo.com')) {
     const idMatch = url.match(/vimeo\.com\/(\d+)/);
     const id = idMatch ? idMatch[1] : null;
     if (!id) return <a href={url} className="block p-4">Abrir en Vimeo</a>;
-  const embed = `https://player.vimeo.com/video/${id}`;
-  return <iframe src={embed} className="block" style={{ width: 'auto', height: '100%' }} frameBorder={0} allowFullScreen />;
+    const embed = `https://player.vimeo.com/video/${id}`;
+    return <iframe src={embed} className="block" style={{ width: 'auto', height: '100%' }} frameBorder={0} allowFullScreen />;
   }
   if (url.includes('instagram.com')) {
+    // Fallback: Si el embed no aparece en 3s, mostrar mensaje y link
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <blockquote className="instagram-media" data-instgrm-permalink={url} data-instgrm-version="14" style={{ margin: 0 }}>
-          <a href={url}>Instagram post</a>
-        </blockquote>
-        <InstagramEmbedLoader />
+      <div className="w-full h-full flex flex-col items-center justify-center">
+        {!igError && (
+          <>
+            <blockquote className="instagram-media" data-instgrm-permalink={url} data-instgrm-version="14" style={{ margin: 0 }}>
+              <a href={url}>Instagram post</a>
+            </blockquote>
+            <InstagramEmbedLoader onFail={() => setIgError(true)} />
+          </>
+        )}
+        {igError && (
+          <div className="flex flex-col items-center justify-center gap-2 p-4">
+            <div className="text-sm text-gray-600">No se pudo mostrar el video de Instagram.<br />
+              <a href={url} target="_blank" rel="noopener noreferrer" className="underline text-pink-600">Abrir en Instagram</a>
+            </div>
+            {poster && <img src={poster} alt="Instagram preview" className="max-w-xs rounded shadow" />}
+          </div>
+        )}
       </div>
     );
   }
   return <a href={url} className="block p-4">Abrir</a>;
 }
 
-function InstagramEmbedLoader() {
+// ...existing code...
+// Llama onFail si el embed no aparece en 3s
+function InstagramEmbedLoader({ onFail }: { onFail?: () => void }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if ((window as any).instgrm) return;
-    const s = document.createElement('script');
-    s.async = true;
-    s.defer = true;
-    s.src = 'https://www.instagram.com/embed.js';
-    document.body.appendChild(s);
-  }, []);
+    // Cargar script solo si no está
+    if (!(window as any).instgrm) {
+      const s = document.createElement('script');
+      s.async = true;
+      s.defer = true;
+      s.src = 'https://www.instagram.com/embed.js';
+      document.body.appendChild(s);
+    } else {
+      (window as any).instgrm.Embeds.process();
+    }
+    // Timeout para fallback visual
+    let timeout: any;
+    if (onFail) {
+      timeout = setTimeout(() => {
+        // Si el embed no se renderizó, avisar
+        const block = document.querySelector('.instagram-media');
+        if (block && block.childElementCount <= 1) {
+          onFail();
+        }
+      }, 3000);
+    }
+    return () => { if (timeout) clearTimeout(timeout); };
+  }, [onFail]);
   return null;
 }

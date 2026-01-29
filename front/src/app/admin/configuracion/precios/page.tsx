@@ -29,6 +29,14 @@ export default function PreciosConfigPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<PriceTier | null>(null);
   const [recalculating, setRecalculating] = useState(false);
+  const [showRecalculateModal, setShowRecalculateModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [recalculateResult, setRecalculateResult] = useState<{
+    total_products: number;
+    updated: number;
+    errors: number;
+    tiers_applied: number;
+  } | null>(null);
   const [formData, setFormData] = useState<PriceTier>({
     name: '',
     display_name: '',
@@ -158,10 +166,7 @@ export default function PreciosConfigPage() {
   };
 
   const handleRecalculateProducts = async () => {
-    if (!confirm('¿Estás seguro de recalcular los precios de TODOS los productos existentes?\n\nEsto actualizará los precios mayorista, descuento 1 y descuento 2 de todos los productos según los niveles configurados actualmente.')) {
-      return;
-    }
-
+    setShowRecalculateModal(false);
     setRecalculating(true);
     try {
       const token = localStorage.getItem('token');
@@ -179,13 +184,8 @@ export default function PreciosConfigPage() {
         return;
       }
 
-      alert(
-        `✅ Recálculo completado:\n\n` +
-        `Total de productos: ${data.total_products}\n` +
-        `Actualizados: ${data.updated}\n` +
-        `Errores: ${data.errors}\n` +
-        `Niveles aplicados: ${data.tiers_applied}`
-      );
+      setRecalculateResult(data);
+      setShowResultModal(true);
     } catch (error) {
       console.error('Error al recalcular:', error);
       alert('Error al recalcular productos');
@@ -234,7 +234,7 @@ export default function PreciosConfigPage() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={handleRecalculateProducts}
+                onClick={() => setShowRecalculateModal(true)}
                 disabled={recalculating}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
               >
@@ -588,6 +588,104 @@ export default function PreciosConfigPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación para recalcular precios */}
+      {showRecalculateModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">⚠️</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Recalcular todos los precios?
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Esta acción actualizará los precios mayorista de <strong>todos los productos</strong> según los niveles configurados actualmente.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200">
+              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <span>📊</span> Se aplicarán estos cambios:
+              </h4>
+              <ul className="text-sm text-gray-700 space-y-1">
+                {tiers.filter(t => t.active).sort((a, b) => a.order_index - b.order_index).map(tier => (
+                  <li key={tier.ID} className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">•</span>
+                    <span>
+                      <strong>{tier.display_name}</strong>: {getFormulaDescription(tier)}
+                      {tier.min_quantity > 0 && <span className="text-gray-500"> (desde {tier.min_quantity} prendas)</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRecalculateModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRecalculateProducts}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de resultado del recálculo */}
+      {showResultModal && recalculateResult && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">✅</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¡Recálculo completado!
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Los precios han sido actualizados exitosamente
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <span className="text-gray-700 font-medium">Total de productos:</span>
+                <span className="text-xl font-bold text-blue-600">{recalculateResult.total_products}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <span className="text-gray-700 font-medium">Actualizados:</span>
+                <span className="text-xl font-bold text-green-600">{recalculateResult.updated}</span>
+              </div>
+              {recalculateResult.errors > 0 && (
+                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                  <span className="text-gray-700 font-medium">Errores:</span>
+                  <span className="text-xl font-bold text-red-600">{recalculateResult.errors}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                <span className="text-gray-700 font-medium">Niveles aplicados:</span>
+                <span className="text-xl font-bold text-purple-600">{recalculateResult.tiers_applied}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowResultModal(false)}
+              className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+            >
+              Aceptar
+            </button>
           </div>
         </div>
       )}

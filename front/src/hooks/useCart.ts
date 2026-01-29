@@ -140,10 +140,17 @@ export default function useCart() {
       }
       
       const data = await res.json();
-  console.log('DEBUG useCart - fetchCart response:', data);
-  console.log('DEBUG useCart - Cart items:', data?.items?.length || 0);
-  console.log('DEBUG useCart - Cart estado:', data?.estado);
-  console.log('DEBUG useCart - Cart ID:', data?.ID || data?.id);
+  console.log('🛒 DEBUG useCart - fetchCart response:', data);
+  console.log('🛒 DEBUG useCart - Cart items:', data?.items?.length || 0);
+  console.log('🛒 DEBUG useCart - Cart estado:', data?.estado);
+  console.log('🛒 DEBUG useCart - Cart ID:', data?.ID || data?.id);
+  console.log('🛒 DEBUG useCart - Items details:', data?.items?.map((item: any) => ({
+    id: item.ID,
+    product_id: item.product_id,
+    variant_id: item.variant_id,
+    requires_stock_check: item.requires_stock_check,
+    stock_confirmed: item.stock_confirmed
+  })));
   // update module/global store and notify listeners
   if (typeof window !== 'undefined') {
     (window as any).__globalCart = data;

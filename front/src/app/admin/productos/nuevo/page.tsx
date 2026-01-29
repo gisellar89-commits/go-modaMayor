@@ -47,6 +47,8 @@ export default function NuevoProductoPage() {
   const locations = ['deposito','mendoza','salta'];
   // map variantID -> location -> qty
   const [stocks, setStocks] = useState<Record<number, Record<string, number>>>({});
+  // Para productos sin variantes: location -> qty
+  const [simpleStocks, setSimpleStocks] = useState<Record<string, number>>({deposito: 0, mendoza: 0, salta: 0});
   const [showManualModal, setShowManualModal] = useState(false);
   const [selectedCombinations, setSelectedCombinations] = useState<Set<string>>(new Set());
   const [uploadingImages, setUploadingImages] = useState(false);
@@ -473,21 +475,55 @@ export default function NuevoProductoPage() {
           setSuccess("Producto creado (sin imagen). Puedes agregar imágenes después.");
         }
         
-        // Mantener dentro del wizard: ir al step 2
+        // Mantener dentro del wizard
         setCreatedProductId(Number(createdId))
-        setStep(2)
-        // si hay size type seleccionado, cargar sus size values
-        if (selectedSizeType) {
-          // try to resolve selectedSizeType to a numeric id if server-provided
-          const resolved = sizeTypes.find((st:any)=> (st.id && String(st.id) === selectedSizeType) || st.key === selectedSizeType)
-          if (resolved && resolved.id) {
-            fetch(`http://localhost:8080/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
-              .then(r=>r.ok? r.json(): Promise.reject(r))
-              .then((all:any[])=> setAvailableSizes(all.filter(s=> s.size_type_id === resolved.id)))
-              .catch(()=> setAvailableSizes([]))
-          } else {
-            // no server-side size type id; no available sizes to preload
-            setAvailableSizes([])
+        
+        // Determinar automáticamente si tiene variantes
+        // Sin variantes = "Talle único/sin variantes" + "Sin variante de color" (selectedColors === ['unico'])
+        console.log('🔍 DEBUG sizeTypes array:', sizeTypes);
+        console.log('🔍 DEBUG selectedSizeType:', selectedSizeType, 'type:', typeof selectedSizeType);
+        
+        const sizeTypeObj = sizeTypes.find((st: any) => {
+          const match = st.ID === Number(selectedSizeType) || st.id === Number(selectedSizeType) || String(st.ID) === selectedSizeType || String(st.id) === selectedSizeType || st.key === selectedSizeType;
+          console.log('  checking:', st, 'match:', match);
+          return match;
+        });
+        
+        console.log('🔍 DEBUG sizeTypeObj found:', sizeTypeObj);
+        
+        const isSizeTypeUnico = sizeTypeObj?.key === 'unico' || sizeTypeObj?.name?.toLowerCase().includes('único') || sizeTypeObj?.name?.toLowerCase().includes('sin variantes');
+        const hasNoColorVariants = selectedColors.length === 1 && selectedColors[0] === 'unico';
+        const productHasVariants = !(isSizeTypeUnico && hasNoColorVariants);
+        
+        console.log('🔍 Detectando variantes:', {
+          sizeTypeObj,
+          isSizeTypeUnico,
+          selectedColors,
+          hasNoColorVariants,
+          productHasVariants
+        });
+        
+        if (!productHasVariants) {
+          // Producto sin variantes: ir directo al paso de stock simple
+          console.log('✅ Producto SIN variantes detectado → Paso 4');
+          setStep(4);
+        } else {
+          // Producto con variantes: ir al paso 2 (generar variantes)
+          console.log('✅ Producto CON variantes detectado → Paso 2');
+          setStep(2);
+          // si hay size type seleccionado, cargar sus size values
+          if (selectedSizeType) {
+            // try to resolve selectedSizeType to a numeric id if server-provided
+            const resolved = sizeTypes.find((st:any)=> (st.id && String(st.id) === selectedSizeType) || st.key === selectedSizeType)
+            if (resolved && resolved.id) {
+              fetch(`http://localhost:8080/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+                .then(r=>r.ok? r.json(): Promise.reject(r))
+                .then((all:any[])=> setAvailableSizes(all.filter(s=> s.size_type_id === resolved.id)))
+                .catch(()=> setAvailableSizes([]))
+            } else {
+              // no server-side size type id; no available sizes to preload
+              setAvailableSizes([])
+            }
           }
         }
       } else {
@@ -679,7 +715,7 @@ export default function NuevoProductoPage() {
   };
 
   return (
-    <main className={`p-4 mx-auto ${step === 3 ? 'max-w-6xl' : 'max-w-lg'}`}>
+    <main className={`p-4 mx-auto ${(step === 3 || step === 4) ? 'max-w-6xl' : 'max-w-lg'}`}>
       <h1 className="text-2xl font-bold mb-4 text-gray-900">Nuevo producto</h1>
       {step === 1 && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -1160,6 +1196,120 @@ export default function NuevoProductoPage() {
           </div>
         </div>
       )}
+
+      {/* Paso 4: Stock simple para productos sin variantes */}
+      {step === 4 && (
+        <div className="flex flex-col gap-4">
+          <h2 className="font-semibold text-gray-900">Asignar stock por ubicación</h2>
+          <p className="text-sm text-gray-600">
+            Este producto no tiene variantes. Asigna el stock disponible en cada ubicación.
+          </p>
+          
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="border px-4 py-3 text-left font-semibold text-gray-900">Ubicación</th>
+                  <th className="border px-4 py-3 text-left font-semibold text-gray-900">Stock disponible</th>
+                </tr>
+              </thead>
+              <tbody>
+                {locations.map(loc => (
+                  <tr key={loc} className="hover:bg-gray-50">
+                    <td className="border px-4 py-3">
+                      <span className="font-medium text-gray-900 capitalize">{loc}</span>
+                    </td>
+                    <td className="border px-4 py-3">
+                      <input
+                        type="number"
+                        min={0}
+                        value={simpleStocks[loc] || 0}
+                        onChange={e => {
+                          const qty = Number(e.target.value) || 0;
+                          setSimpleStocks(prev => ({ ...prev, [loc]: qty }));
+                        }}
+                        className="w-32 border px-3 py-2 rounded text-gray-900"
+                        placeholder="0"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td className="border px-4 py-3 font-semibold text-gray-900">Stock total:</td>
+                  <td className="border px-4 py-3 font-bold text-blue-700">
+                    {Object.values(simpleStocks).reduce((sum, qty) => sum + qty, 0)} unidades
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                if (!createdProductId) {
+                  setError('No se encontró el producto creado');
+                  return;
+                }
+                
+                try {
+                  const token = localStorage.getItem("token");
+                  const API_BASE = 'http://localhost:8080';
+                  
+                  // Preparar array de stocks para enviar en batch
+                  const stocksArray = Object.entries(simpleStocks)
+                    .filter(([_, qty]) => qty > 0)
+                    .map(([location, quantity]) => ({
+                      variant_id: null,
+                      location,
+                      quantity
+                    }));
+                  
+                  if (stocksArray.length === 0) {
+                    setError('Debe asignar al menos un stock mayor a 0');
+                    return;
+                  }
+                  
+                  // Enviar todos los stocks en una sola petición
+                  const response = await fetch(`${API_BASE}/products/${createdProductId}/stocks`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({
+                      stocks: stocksArray
+                    })
+                  });
+                  
+                  if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al guardar stock');
+                  }
+                  
+                  setSuccess('Stock asignado exitosamente');
+                  clearWizardState();
+                  setTimeout(() => router.push('/admin/productos'), 1500);
+                } catch (e: any) {
+                  setError(`Error al guardar stock: ${e.message}`);
+                }
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Guardar stock y finalizar
+            </button>
+            <button
+              onClick={() => setStep(1)}
+              className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              Volver
+            </button>
+          </div>
+        </div>
+      )}
+
   {error && <div className="text-red-500 mt-2">{error}</div>}
   {success && <div className="text-green-600 mt-2">{success}</div>}
 

@@ -5,7 +5,7 @@ import OrderDetailModal from "../../admin/ventas/components/OrderDetailModal";
 import { Order } from "../../../utils/api";
 
 export default function MisPedidosPage() {
-  const { orders, loading, error, refresh } = useSales();
+  const { orders, loading, error, refresh } = useSales({}, true); // true = solo pedidos del usuario actual
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
   // "Cargar más" behavior: show a growing slice of the orders list
   const [batchSize, setBatchSize] = useState(10);

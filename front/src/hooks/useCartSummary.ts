@@ -162,16 +162,17 @@ export default function useCartSummary(enableNotifications = false) {
               lastNotificationRef.current = { type: "tier_lost", tierId: currentTier.id, timestamp: now };
             }
           }
-          // Caso 3: Está cerca del siguiente tier (falta 1 prenda)
-          else if (data.next_tier && data.next_tier.quantity_to_unlock === 1) {
+          // Caso 3: Está cerca del siguiente tier (faltan pocas prendas)
+          else if (data.next_tier && data.next_tier.quantity_to_unlock <= 3 && data.next_tier.quantity_to_unlock > 0) {
             // Solo mostrar si la cantidad cambió (se agregó algo)
             const quantityIncreased = currentQuantity > prevQuantity;
             
             if (quantityIncreased && shouldShowNotification("near_tier", currentTier?.id || null)) {
+              const prendasText = data.next_tier.quantity_to_unlock === 1 ? 'prenda' : 'prendas';
               showNotification({
                 type: "near_tier",
-                message: `¡Agregando 1 prenda más obtendrás ${data.next_tier.display_name}!`,
-                itemsNeeded: 1,
+                message: `¡Agregando ${data.next_tier.quantity_to_unlock} ${prendasText} más obtendrás ${data.next_tier.display_name}!`,
+                itemsNeeded: data.next_tier.quantity_to_unlock,
                 tierName: data.next_tier.display_name,
               });
               

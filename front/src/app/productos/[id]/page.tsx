@@ -61,14 +61,72 @@ export default function DetalleProductoPage() {
     }
   }, [talles, colores, selectedSize, selectedColor]);
 
+  // Limpiar el mensaje de éxito después de 3 segundos
+  useEffect(() => {
+    if (addStatus) {
+      const timer = setTimeout(() => {
+        setAddStatus(null);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [addStatus]);
+
   const varianteSeleccionada = (product?.variants || []).find((v: any) => (!selectedSize || v.size === selectedSize) && (!selectedColor || v.color === selectedColor));
 
+  // Calcular stock de depósito y otras ubicaciones SOLO para la variante seleccionada
   let depositoStock = null;
   let otrasUbicaciones: any[] = [];
-  if (product && product.location_stocks && product.location_stocks.length > 0) {
-    depositoStock = (product.location_stocks as LocationStock[]).find((s) => s.location === "deposito");
-    otrasUbicaciones = (product.location_stocks as LocationStock[]).filter((s) => s.location !== "deposito" && (s.stock ?? 0) > 0);
+  if (product && product.location_stocks && product.location_stocks.length > 0 && varianteSeleccionada) {
+    const variantId = varianteSeleccionada.ID || varianteSeleccionada.id;
+    depositoStock = (product.location_stocks as LocationStock[]).find(
+      (s) => s.location === "deposito" && s.variant_id === variantId
+    );
+    otrasUbicaciones = (product.location_stocks as LocationStock[]).filter(
+      (s) => s.location !== "deposito" && s.variant_id === variantId && (s.stock ?? 0) > 0
+    );
   }
+
+  // Determinar qué talles tienen stock en depósito (para habilitar/deshabilitar botones)
+  const tallesDisponibles = React.useMemo(() => {
+    if (!product?.variants || !product?.location_stocks) return [];
+    
+    return talles.map((size) => {
+      // Encontrar todas las variantes de este talle
+      const variantesDelTalle = product.variants!.filter((v: any) => v.size === size);
+      
+      // Verificar si alguna variante de este talle tiene stock en depósito
+      const tieneStock = variantesDelTalle.some((v: any) => {
+        const variantId = v.ID || v.id;
+        const stockDeposito = (product.location_stocks as LocationStock[]).find(
+          (s) => s.location === "deposito" && s.variant_id === variantId && (s.stock ?? 0) > 0
+        );
+        return !!stockDeposito;
+      });
+      
+      return { size, habilitado: tieneStock };
+    });
+  }, [product, talles]);
+
+  // Determinar qué colores tienen stock en depósito
+  const coloresDisponibles = React.useMemo(() => {
+    if (!product?.variants || !product?.location_stocks) return [];
+    
+    return colores.map((color) => {
+      // Encontrar todas las variantes de este color
+      const variantesDelColor = product.variants!.filter((v: any) => v.color === color);
+      
+      // Verificar si alguna variante de este color tiene stock en depósito
+      const tieneStock = variantesDelColor.some((v: any) => {
+        const variantId = v.ID || v.id;
+        const stockDeposito = (product.location_stocks as LocationStock[]).find(
+          (s) => s.location === "deposito" && s.variant_id === variantId && (s.stock ?? 0) > 0
+        );
+        return !!stockDeposito;
+      });
+      
+      return { color, habilitado: tieneStock };
+    });
+  }, [product, colores]);
 
   const galleryImages: string[] = React.useMemo(() => {
     const imgs: string[] = [];
@@ -224,7 +282,7 @@ export default function DetalleProductoPage() {
       const res = await fetch(`${API_BASE}/cart/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ product_id: product?.ID ?? product?.id, variant_id: varianteSeleccionada?.ID || varianteSeleccionada?.id, quantity, requires_stock_check: true }),
+        body: JSON.stringify({ product_id: product?.ID ?? product?.id, variant_id: varianteSeleccionada?.ID || varianteSeleccionada?.id, quantity: 1, requires_stock_check: true }),
       });
       if (!res.ok) throw new Error("No se pudo agregar al carrito");
   const data = await res.json().catch(() => null);
@@ -282,46 +340,6 @@ export default function DetalleProductoPage() {
     // fallback to original string (may still work in browser for English names)
     return c;
   };
-
-  const coloresDisponibles = (colores as string[]).map((color) => {
-    let habilitado = false;
-    // If there is no location_stocks information, assume availability is unknown -> show colors
-    const hasLocationStocks = Array.isArray(product?.location_stocks) && (product?.location_stocks || []).length > 0;
-    if (!hasLocationStocks) {
-      habilitado = true;
-    } else if (selectedSize) {
-      const variante = (product.variants || []).find((v: any) => String(v.color) === color && String(v.size) === selectedSize);
-      if (variante) {
-        const totalStock = (product.location_stocks || []).filter((s: any) => s.variant_id === variante.ID || s.variant_id === variante.id).reduce((acc: number, s: any) => acc + s.stock, 0);
-        habilitado = totalStock > 0;
-      }
-    } else {
-      const variantes = (product.variants || []).filter((v: any) => String(v.color) === color);
-      habilitado = variantes.some((variante: any) => {
-        const totalStock = (product.location_stocks || []).filter((s: any) => s.variant_id === variante.ID || s.variant_id === variante.id).reduce((acc: number, s: any) => acc + s.stock, 0);
-        return totalStock > 0;
-      });
-    }
-    return { color, habilitado };
-  });
-
-  const tallesDisponibles = (talles as string[]).map((size) => {
-    let habilitado = false;
-    if (selectedColor) {
-      const variante = (product.variants || []).find((v: any) => String(v.size) === size && String(v.color) === selectedColor);
-      if (variante) {
-        const totalStock = (product.location_stocks || []).filter((s: any) => s.variant_id === variante.ID || s.variant_id === variante.id).reduce((acc: number, s: any) => acc + s.stock, 0);
-        habilitado = totalStock > 0;
-      }
-    } else {
-      const variantes = (product.variants || []).filter((v: any) => String(v.size) === size);
-      habilitado = variantes.some((variante: any) => {
-        const totalStock = (product.location_stocks || []).filter((s: any) => s.variant_id === variante.ID || s.variant_id === variante.id).reduce((acc: number, s: any) => acc + s.stock, 0);
-        return totalStock > 0;
-      });
-    }
-    return { size, habilitado };
-  });
 
   return (
     <main className="p-3 sm:p-4 md:p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
@@ -479,18 +497,18 @@ export default function DetalleProductoPage() {
                           key={size} 
                           onClick={() => {
                             console.log('Click en talle:', size);
-                            if (habilitado) setSelectedSize(size);
+                            setSelectedSize(size);
                           }} 
-                          className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                          className={`px-4 py-2 rounded-lg font-semibold transition-all relative ${
                             selectedSize === size 
                               ? 'bg-gradient-to-r from-yellow-500 to-pink-500 text-white shadow-md' 
-                              : habilitado 
-                                ? 'bg-gray-100 hover:bg-gray-200 border border-gray-300' 
-                                : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                          }`} 
-                          disabled={!habilitado}
+                              : 'bg-gray-100 hover:bg-gray-200 border border-gray-300'
+                          }`}
                         >
                           {size}
+                          {!habilitado && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full font-bold">Sin stock</span>
+                          )}
                         </button>
                       );
                     })}
@@ -511,24 +529,27 @@ export default function DetalleProductoPage() {
                       const textColor = isHex && sw.toLowerCase() === '#ffffff' ? '#000' : '#fff';
                       console.log('DEBUG - Color:', color, 'habilitado:', habilitado, 'swatch:', sw);
                       return (
-                        <button
-                          key={color}
-                          title={color}
-                          onClick={() => {
-                            console.log('Click en color:', color);
-                            if (habilitado) setSelectedColor(color);
-                          }}
-                          disabled={!habilitado}
-                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
-                            isSelected 
-                              ? 'ring-4 ring-pink-400 border-white shadow-lg scale-110' 
-                              : 'border-gray-300 hover:border-pink-300 hover:scale-105'
-                          } ${!habilitado ? 'opacity-40 cursor-not-allowed' : ''}`}
-                          style={{ background: sw ?? undefined, color: textColor }}
-                        >
-                          {/* If we couldn't resolve to a CSS color, show the name */}
-                          {!sw && <span className="text-xs font-semibold">{color}</span>}
-                        </button>
+                        <div key={color} className="relative">
+                          <button
+                            title={color}
+                            onClick={() => {
+                              console.log('Click en color:', color);
+                              setSelectedColor(color);
+                            }}
+                            className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
+                              isSelected 
+                                ? 'ring-4 ring-pink-400 border-white shadow-lg scale-110' 
+                                : 'border-gray-300 hover:border-pink-300 hover:scale-105'
+                            }`}
+                            style={{ background: sw ?? undefined, color: textColor }}
+                          >
+                            {/* If we couldn't resolve to a CSS color, show the name */}
+                            {!sw && <span className="text-xs font-semibold">{color}</span>}
+                          </button>
+                          {!habilitado && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full font-bold">✕</span>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -536,20 +557,26 @@ export default function DetalleProductoPage() {
               )}
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-semibold text-gray-700">Cantidad:</label>
-                  <input 
-                    type="number" 
-                    min={1} 
-                    value={quantity} 
-                    onChange={e => setQuantity(Number(e.target.value))} 
-                    className="input-themed w-20 text-center"
-                  />
-                </div>
                 {(() => {
                   const deposStock = Number(depositoStock?.stock ?? 0);
                   const hasOther = Array.isArray(otrasUbicaciones) && otrasUbicaciones.length > 0;
                   const disabled = (talles.length > 0 && !selectedSize) || (colores.length > 0 && !selectedColor);
+                  const shouldDisableQuantity = !disabled && deposStock === 0 && hasOther;
+
+                  return (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-semibold text-gray-700">Cantidad:</label>
+                        <input 
+                          type="number" 
+                          min={1} 
+                          value={quantity} 
+                          onChange={e => setQuantity(Number(e.target.value))} 
+                          className="input-themed w-20 text-center"
+                          disabled={shouldDisableQuantity}
+                        />
+                      </div>
+                {(() => {
                   
                   console.log('DEBUG - Botón agregar:', {
                     tallesLength: talles.length,
@@ -604,12 +631,23 @@ export default function DetalleProductoPage() {
                     </button>
                   );
                 })()}
+                    </>
+                  );
+                })()}
               </div>
 
               {addStatus && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-4 rounded-lg">
-                  <p className="text-green-700 font-medium flex items-center gap-2">
-                    ✓ {addStatus}
+                <div className={`border-l-4 p-4 rounded-lg ${
+                  addStatus.includes('⚠️') || addStatus.toLowerCase().includes('error')
+                    ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-orange-500'
+                    : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-500'
+                }`}>
+                  <p className={`font-medium flex items-center gap-2 ${
+                    addStatus.includes('⚠️') || addStatus.toLowerCase().includes('error')
+                      ? 'text-orange-700'
+                      : 'text-green-700'
+                  }`}>
+                    {addStatus.includes('⚠️') || addStatus.toLowerCase().includes('error') ? '⚠️' : '✓'} {addStatus.replace('⚠️', '').trim()}
                   </p>
                 </div>
               )}

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "../../components/ProductCard";
 import FilterCheckbox from "../../components/FilterCheckbox";
 import { fetchProductsPaged, fetchCategories, Product, Category } from "../../utils/api";
@@ -20,8 +20,6 @@ export default function ProductosClient() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<number | undefined>(undefined);
   const [subcategories, setSubcategories] = useState<any[]>([]);
   
-  // Track if we've initialized from URL params
-  const initializedFromParams = useRef(false);
   
   // Estados para filtros móviles
   const [mobileFilterOpen, setMobileFilterOpen] = useState<string | null>(null);
@@ -57,33 +55,48 @@ export default function ProductosClient() {
   }, [mobileFilterOpen]);
 
   const searchParams = useSearchParams();
+  const router = useRouter();
 
-  // Initialize filters from query params - runs once on mount
+  // Sincronizar filtros con los parámetros de la URL cada vez que cambian
+  // Forzar actualización de filtros cada vez que cambian los parámetros de la URL
+  // Mejorar la reactividad observando los valores individuales de los parámetros
+  // Siempre dependencias de tamaño y tipo fijo (3 strings)
+  const categoryParam = (searchParams?.get("category") ?? "").toString();
+  const subcategoryParam = (searchParams?.get("subcategory") ?? "").toString();
+  const searchParam = (searchParams?.get("search") ?? "").toString();
+  const colorsParam = (searchParams?.get("colors") ?? "").toString();
+  const sizesParam = (searchParams?.get("sizes") ?? "").toString();
+  const minPriceParam = (searchParams?.get("minPrice") ?? "").toString();
+  const maxPriceParam = (searchParams?.get("maxPrice") ?? "").toString();
   useEffect(() => {
-    if (initializedFromParams.current) return;
-    
-    if (searchParams) {
-      const cat = searchParams.get("category");
-      const sub = searchParams.get("subcategory");
-      const q = searchParams.get("search");
-      
-      // Set all states at once before marking as initialized
-      if (cat) setSelectedCategory(Number(cat));
-      if (sub) setSelectedSubcategory(Number(sub));
-      if (q !== null && q !== undefined) setSearch(q);
-    }
-    
-    // Mark as initialized whether we had params or not
-    initializedFromParams.current = true;
-  }, [searchParams]);
+    setSelectedCategory(categoryParam ? Number(categoryParam) : undefined);
+    setSelectedSubcategory(subcategoryParam ? Number(subcategoryParam) : undefined);
+    setSearch(searchParam);
+    setSelectedColors(colorsParam ? colorsParam.split(",") : []);
+    setSelectedSizes(sizesParam ? sizesParam.split(",") : []);
+    setMinPrice(minPriceParam ? Number(minPriceParam) : null);
+    setMaxPrice(maxPriceParam ? Number(maxPriceParam) : null);
+    setPage(1);
+  }, [categoryParam, subcategoryParam, searchParam, colorsParam, sizesParam, minPriceParam, maxPriceParam]);
+  // Cuando el usuario cambia un filtro, actualizar la URL
+  const updateUrlParams = (params: Record<string, any>) => {
+    const sp = new URLSearchParams(searchParams?.toString() || "");
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0)) {
+        sp.delete(key);
+      } else {
+        sp.set(key, Array.isArray(value) ? value.join(",") : value);
+      }
+    });
+    router.replace(`?${sp.toString()}`);
+  };
 
-  // Fetch products whenever filters change
+  // Fetch products directamente de los parámetros de la URL
   useEffect(() => {
-    // Don't fetch until we've initialized from params
-    if (!initializedFromParams.current) return;
-    
     setLoading(true);
-    fetchProductsPaged({ search, page, limit, category: selectedCategory, subcategory: selectedSubcategory })
+    const category = !isNaN(Number(categoryParam)) && categoryParam !== "" ? Number(categoryParam) : undefined;
+    const subcategory = !isNaN(Number(subcategoryParam)) && subcategoryParam !== "" ? Number(subcategoryParam) : undefined;
+    fetchProductsPaged({ search: searchParam, page, limit, category, subcategory, token: undefined })
       .then((res) => {
         // compute total stock for each product and sort so products with stock appear first
         const computeTotalStock = (p: any) => {
@@ -120,10 +133,15 @@ export default function ProductosClient() {
         });
         setProducts(itemsWithStock);
         setTotal(res.total);
+        // Exponer productos en window para depuración
+        if (typeof window !== 'undefined') {
+          window.products = itemsWithStock;
+        }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [search, page, limit, selectedCategory, selectedSubcategory]);
+  }, [categoryParam, subcategoryParam, searchParam, page, limit]);
+
 
   // load subcategories when category changes
   useEffect(() => {
@@ -158,8 +176,7 @@ export default function ProductosClient() {
     fetchCategories(token ?? undefined).then(setCategories).catch(() => setCategories([]));
   }, []);
 
-  // reset page when filters/search change
-  useEffect(() => setPage(1), [search, selectedCategory, selectedSubcategory]);
+  // reset page when filters/search or client filters change
 
   // UI filters (client-side) built from returned products' variants
   // Now support multi-select (arrays) so user can check multiple colors/sizes
@@ -172,6 +189,8 @@ export default function ProductosClient() {
   const [showAllColors, setShowAllColors] = useState(false);
   const [showAllSizes, setShowAllSizes] = useState(false);
   const MAX_VISIBLE = 10;
+
+  useEffect(() => setPage(1), [search, selectedCategory, selectedSubcategory, selectedColors, selectedSizes, minPrice, maxPrice]);
 
   // Clear client filters when category/subcategory changes
   useEffect(() => {
@@ -252,20 +271,26 @@ export default function ProductosClient() {
   const availableColors = availableFilters.colors;
   const availableSizes = sortedSizes;
 
-  // Apply client-side filters to the products displayed (multi-select)
+
+  // Filtros del costado: color, talle, precio (aplicados en frontend)
   const filteredProducts = useMemo(() => {
-    // Also apply price filtering (wholesale_price) together with color/size multi-selects
     return products.filter((p) => {
+      // Filtrar por categoría si está seleccionada
+      if (selectedCategory !== undefined && p.category?.ID !== undefined && Number(p.category?.ID) !== Number(selectedCategory)) {
+        return false;
+      }
+      // Filtrar por subcategoría si está seleccionada
+      if (selectedSubcategory !== undefined && p.subcategory?.ID !== undefined && Number(p.subcategory?.ID) !== Number(selectedSubcategory)) {
+        return false;
+      }
       // price check
       const price = p.wholesale_price !== undefined && p.wholesale_price !== null ? Number(p.wholesale_price) : NaN;
       if (!Number.isNaN(price)) {
         if (minPrice !== null && minPrice !== undefined && minPrice !== "" && price < Number(minPrice)) return false;
         if (maxPrice !== null && maxPrice !== undefined && maxPrice !== "" && price > Number(maxPrice)) return false;
       }
-
-      // if no color/size selected, product passes (as long as price passed)
+      // color/talle
       if (selectedColors.length === 0 && selectedSizes.length === 0) return true;
-
       const variants = p.variants ?? [];
       if (variants.length === 0) return false;
       return variants.some((v: any) => {
@@ -276,7 +301,16 @@ export default function ProductosClient() {
         return okColor && okSize;
       });
     });
-  }, [products, selectedColors, selectedSizes, minPrice, maxPrice]);
+  }, [products, selectedCategory, selectedSubcategory, selectedColors, selectedSizes, minPrice, maxPrice]);
+
+
+  // Paginar sobre los productos filtrados (solo una vez)
+
+  // Paginar sobre los productos filtrados
+  const paginatedProducts = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredProducts.slice(start, start + limit);
+  }, [filteredProducts, page, limit]);
 
   // Helpers to show swatches in the filters: map common names and validate CSS colors
   const isValidCssColor = (value: string) => {
@@ -530,11 +564,13 @@ export default function ProductosClient() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
+                                let newColors;
                                 if (e.target.checked) {
-                                  setSelectedColors([...selectedColors, color]);
+                                  newColors = [...selectedColors, color];
                                 } else {
-                                  setSelectedColors(selectedColors.filter((c) => c !== color));
+                                  newColors = selectedColors.filter((c) => c !== color);
                                 }
+                                updateUrlParams({ colors: newColors });
                               }}
                               className="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"
                             />
@@ -599,11 +635,13 @@ export default function ProductosClient() {
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
+                                let newSizes;
                                 if (e.target.checked) {
-                                  setSelectedSizes([...selectedSizes, size]);
+                                  newSizes = [...selectedSizes, size];
                                 } else {
-                                  setSelectedSizes(selectedSizes.filter((s) => s !== size));
+                                  newSizes = selectedSizes.filter((s) => s !== size);
                                 }
+                                updateUrlParams({ sizes: newSizes });
                               }}
                               className="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500"
                             />
@@ -656,7 +694,7 @@ export default function ProductosClient() {
                         type="number"
                         placeholder="Desde"
                         value={minPrice ?? ''}
-                        onChange={(e) => setMinPrice(e.target.value ? Number(e.target.value) : null)}
+                        onChange={(e) => updateUrlParams({ minPrice: e.target.value ? Number(e.target.value) : null })}
                         className="input-themed flex-1 text-sm"
                       />
                       <span className="text-gray-500">-</span>
@@ -664,7 +702,7 @@ export default function ProductosClient() {
                         type="number"
                         placeholder="Hasta"
                         value={maxPrice ?? ''}
-                        onChange={(e) => setMaxPrice(e.target.value ? Number(e.target.value) : null)}
+                        onChange={(e) => updateUrlParams({ maxPrice: e.target.value ? Number(e.target.value) : null })}
                         className="input-themed flex-1 text-sm"
                       />
                     </div>
@@ -677,12 +715,14 @@ export default function ProductosClient() {
             <div className="bg-white border-t-2 border-gray-200 p-4 flex gap-3 shadow-lg flex-shrink-0">
               <button
                 onClick={() => {
-                  setSelectedCategory(undefined);
-                  setSelectedSubcategory(undefined);
-                  setSelectedColors([]);
-                  setSelectedSizes([]);
-                  setMinPrice(null);
-                  setMaxPrice(null);
+                  updateUrlParams({
+                    category: undefined,
+                    subcategory: undefined,
+                    colors: undefined,
+                    sizes: undefined,
+                    minPrice: undefined,
+                    maxPrice: undefined,
+                  });
                 }}
                 className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold transition-colors"
               >
@@ -734,7 +774,27 @@ export default function ProductosClient() {
               <h4 className="text-lg font-bold mb-3 bg-gradient-to-r from-yellow-500 to-pink-500 bg-clip-text text-transparent">Filtros</h4>
               <div className="mb-4">
                 <button 
-                  onClick={() => { setSelectedColors([]); setSelectedSizes([]); }} 
+                  onClick={() => {
+                    // Limpiar todos los filtros relevantes, incluyendo categoría y subcategoría
+                    updateUrlParams({
+                      category: undefined,
+                      subcategory: undefined,
+                      colors: undefined,
+                      sizes: undefined,
+                      minPrice: undefined,
+                      maxPrice: undefined,
+                      search: undefined,
+                      page: undefined,
+                    });
+                    setSelectedCategory(undefined);
+                    setSelectedSubcategory(undefined);
+                    setSelectedColors([]);
+                    setSelectedSizes([]);
+                    setMinPrice(null);
+                    setMaxPrice(null);
+                    setSearch("");
+                    setPage(1);
+                  }}
                   className="text-sm text-pink-600 hover:text-pink-700 font-medium hover:underline"
                 >
                   ✕ Limpiar filtros
@@ -768,7 +828,7 @@ export default function ProductosClient() {
                 <div className="flex flex-col gap-2">
                   <div>
                     <button 
-                      onClick={() => { setSelectedColors([]); setShowAllColors(false); }} 
+                      onClick={() => { updateUrlParams({ colors: undefined }); setShowAllColors(false); }} 
                       className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${selectedColors.length === 0 ? 'bg-gradient-to-r from-yellow-500 to-pink-500 text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200'}`}
                     >
                       Todos
@@ -814,7 +874,7 @@ export default function ProductosClient() {
                 <div className="flex flex-col gap-2">
                   <div>
                     <button 
-                      onClick={() => { setSelectedSizes([]); setShowAllSizes(false); }} 
+                      onClick={() => { updateUrlParams({ sizes: undefined }); setShowAllSizes(false); }} 
                       className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all ${selectedSizes.length === 0 ? 'bg-gradient-to-r from-yellow-500 to-pink-500 text-white shadow-md' : 'bg-gray-100 hover:bg-gray-200'}`}
                     >
                       Todos
@@ -870,7 +930,7 @@ export default function ProductosClient() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {filteredProducts.map((prod) => (
+              {paginatedProducts.map((prod) => (
                 <ProductCard
                   key={prod.id || prod.ID}
                   id={prod.id || prod.ID}
@@ -889,10 +949,10 @@ export default function ProductosClient() {
 
           {/* Pagination controls */}
           <div className="mt-6 flex items-center justify-between">
-            <div className="text-sm text-gray-600">{total ? `${(page-1)*limit + 1} - ${Math.min(page*limit, total)} de ${total}` : ''}</div>
+            <div className="text-sm text-gray-600">{filteredProducts.length ? `${(page-1)*limit + 1} - ${Math.min(page*limit, filteredProducts.length)} de ${filteredProducts.length}` : ''}</div>
             <div className="flex gap-2">
               <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p-1))} className="px-3 py-1 border rounded disabled:opacity-50">Anterior</button>
-              <button disabled={total !== undefined && page*limit >= (total ?? 0)} onClick={() => setPage((p) => p+1)} className="px-3 py-1 border rounded disabled:opacity-50">Siguiente</button>
+              <button disabled={filteredProducts.length !== undefined && page*limit >= (filteredProducts.length ?? 0)} onClick={() => setPage((p) => p+1)} className="px-3 py-1 border rounded disabled:opacity-50">Siguiente</button>
             </div>
           </div>
         </section>

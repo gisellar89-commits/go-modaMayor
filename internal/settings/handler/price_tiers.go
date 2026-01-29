@@ -293,12 +293,12 @@ func CalculatePricesForTiers(c *gin.Context) {
 	result := make([]TierWithPrice, 0)
 	var applicableTier *settings.PriceTier
 
-	// Encontrar el tier aplicable según la cantidad
+	// Encontrar el tier aplicable según la cantidad (el de mayor MinQuantity que cumpla)
 	for i := range tiers {
 		tier := &tiers[i]
 		applies := quantity >= tier.MinQuantity
 
-		if applies && (applicableTier == nil || tier.OrderIndex < applicableTier.OrderIndex) {
+		if applies && (applicableTier == nil || tier.MinQuantity > applicableTier.MinQuantity) {
 			applicableTier = tier
 		}
 

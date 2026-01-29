@@ -880,11 +880,18 @@ export default function AdminProductosPage() {
           {products.map((prod) => {
             const id = prod.ID || prod.id;
             const costPrice = Number(prod.cost_price || 0);
-            // Calcular precios (usando la misma lógica que en la página de edición)
-            const wholesalePrice = costPrice * 2.5; // precio mayorista = costo * 2.5
-            const discount1Price = wholesalePrice * 0.9; // descuento 1 = -10%
-            const discount2Price = wholesalePrice * 0.8; // descuento 2 = -20%
-            const finalPrice = wholesalePrice * 0.7; // final = -30%
+            // Usar los precios guardados en la base de datos
+            const wholesalePrice = Number((prod as any).wholesale_price || 0);
+            const discount1Price = Number((prod as any).discount1_price || 0);
+            const discount2Price = Number((prod as any).discount2_price || 0);
+            // Calcular precio final (puede tener descuento adicional)
+            let finalPrice = wholesalePrice;
+            if ((prod as any).discount_type === 'percent') {
+              finalPrice = wholesalePrice * (1 - (Number((prod as any).discount_value || 0) / 100));
+            } else if ((prod as any).discount_type === 'fixed') {
+              finalPrice = wholesalePrice - Number((prod as any).discount_value || 0);
+            }
+            if (finalPrice < 0) finalPrice = 0;
 
             return (
               <div key={id} className="px-4 py-4 hover:bg-gray-50 flex items-center">
@@ -934,8 +941,8 @@ export default function AdminProductosPage() {
                       <span className="font-medium text-blue-600">${discount1Price.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Final:</span>
-                      <span className="font-medium text-green-600">${finalPrice.toFixed(2)}</span>
+                      <span className="text-gray-500">Desc2:</span>
+                      <span className="font-medium text-green-600">${discount2Price.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

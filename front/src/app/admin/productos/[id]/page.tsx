@@ -26,6 +26,7 @@ export default function EditarProductoPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [seasons, setSeasons] = useState<any[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const router = useRouter();
 
   // Auto-cerrar mensajes después de 5 segundos
@@ -178,6 +179,7 @@ export default function EditarProductoPage() {
   };
 
   const handleDelete = async () => {
+    setShowDeleteModal(false);
     setError(null);
     setSuccess(null);
     try {
@@ -189,10 +191,14 @@ export default function EditarProductoPage() {
         },
       });
       if (!res.ok) throw new Error("No se pudo eliminar el producto");
-      setSuccess("Producto eliminado exitosamente");
-      setProduct(null);
+      setSuccess("✅ Producto eliminado exitosamente. Redirigiendo...");
+      // Redirigir al listado después de 2 segundos
+      setTimeout(() => {
+        router.push('/admin/productos');
+      }, 2000);
     } catch (e: any) {
       setError(e.message || String(e));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -341,17 +347,20 @@ export default function EditarProductoPage() {
           >
             Información General
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('variants')}
-            className={`px-4 py-3 font-medium border-b-2 transition ${
-              activeTab === 'variants'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Variantes ({variants.length})
-          </button>
+          {/* Solo mostrar pestaña de Variantes si el producto tiene variantes */}
+          {variants.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('variants')}
+              className={`px-4 py-3 font-medium border-b-2 transition ${
+                activeTab === 'variants'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Variantes ({variants.length})
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveTab('stock')}
@@ -1200,10 +1209,78 @@ export default function EditarProductoPage() {
             )}
 
             {variants.length === 0 ? (
-              <div className="bg-gray-50 border border-gray-300 rounded-lg p-8 text-center">
-                <p className="text-gray-600">
-                  Este producto no tiene variantes. Por favor, crea variantes primero en la pestaña "Variantes".
+              // Producto sin variantes: mostrar tabla simple de stock por ubicación
+              <div className="overflow-x-auto">
+                <p className="text-sm text-gray-600 mb-4">
+                  Este producto no tiene variantes. Asigna stock directamente por ubicación:
                 </p>
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Ubicación</th>
+                      <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['deposito', 'mendoza', 'salta'].map(location => {
+                      const stockEntry = locationStocks.find(
+                        (ls: any) => ls.location === location && (ls.variant_id === null || ls.variant_id === undefined)
+                      );
+                      const currentStock = stockEntry?.stock || 0;
+                      
+                      return (
+                        <tr key={location}>
+                          <td className="border border-gray-300 px-4 py-3 font-medium text-gray-900 capitalize">
+                            {location}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-3 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              value={currentStock}
+                              onChange={(e) => {
+                                const newValue = Number(e.target.value) || 0;
+                                const updatedStocks = [...locationStocks];
+                                const existingIdx = updatedStocks.findIndex(
+                                  (ls: any) => ls.location === location && (ls.variant_id === null || ls.variant_id === undefined)
+                                );
+                                
+                                if (existingIdx >= 0) {
+                                  updatedStocks[existingIdx] = {
+                                    ...updatedStocks[existingIdx],
+                                    stock: newValue
+                                  };
+                                } else {
+                                  updatedStocks.push({
+                                    product_id: product.ID || product.id,
+                                    variant_id: null,
+                                    location: location,
+                                    stock: newValue,
+                                    reserved: 0
+                                  });
+                                }
+                                
+                                setLocationStocks(updatedStocks);
+                              }}
+                              className="w-24 border border-gray-300 rounded px-3 py-2 text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-gray-100">
+                      <td className="border border-gray-300 px-4 py-3 font-semibold text-gray-900">Stock total:</td>
+                      <td className="border border-gray-300 px-4 py-3 text-center font-bold text-blue-700">
+                        {locationStocks
+                          .filter((ls: any) => ls.variant_id === null || ls.variant_id === undefined)
+                          .reduce((sum: number, ls: any) => sum + (ls.stock || 0), 0)
+                        } unidades
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1404,7 +1481,7 @@ export default function EditarProductoPage() {
           </button>
           <button 
             type="button" 
-            onClick={handleDelete} 
+            onClick={() => setShowDeleteModal(true)} 
             className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md font-medium transition"
           >
             Eliminar Producto
@@ -1418,6 +1495,43 @@ export default function EditarProductoPage() {
           </button>
         </div>
       </form>
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  ¿Eliminar producto?
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Esta acción no se puede deshacer. El producto <strong>{product?.name}</strong> será eliminado permanentemente junto con todas sus variantes y stocks.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md font-medium transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition"
+                  >
+                    Sí, eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

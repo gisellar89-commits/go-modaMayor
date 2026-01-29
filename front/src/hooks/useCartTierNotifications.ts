@@ -44,8 +44,8 @@ export default function useCartTierNotifications() {
       }
     }
 
-    // Detectar cuando estás cerca de un nuevo tier (falta 1 prenda)
-    if (summary.next_tier && summary.next_tier.quantity_to_unlock === 1) {
+    // Detectar cuando estás cerca de un nuevo tier (faltan pocas prendas)
+    if (summary.next_tier && summary.next_tier.quantity_to_unlock <= 3 && summary.next_tier.quantity_to_unlock > 0) {
       console.log('⚡ CERCA DE TIER!', {
         nextTierName: summary.next_tier.display_name,
         quantityToUnlock: summary.next_tier.quantity_to_unlock,
@@ -57,11 +57,12 @@ export default function useCartTierNotifications() {
       // Solo mostrar si la cantidad cambió (evita mostrar la notificación cada vez que se re-renderiza)
       if (lastQuantity !== currentTotalQty && lastQuantity > 0) {
         console.log('⚡ MOSTRANDO NOTIFICACIÓN DE CERCA DE TIER');
+        const prendasText = summary.next_tier.quantity_to_unlock === 1 ? 'prenda' : 'prendas';
         if (typeof window !== "undefined" && (window as any).showPriceNotification) {
           (window as any).showPriceNotification({
             type: "near_tier",
-            message: `¡Agregá 1 prenda más para desbloquear "${summary.next_tier.display_name}"!`,
-            itemsNeeded: 1,
+            message: `¡Agregá ${summary.next_tier.quantity_to_unlock} ${prendasText} más para desbloquear "${summary.next_tier.display_name}"!`,
+            itemsNeeded: summary.next_tier.quantity_to_unlock,
             tierName: summary.next_tier.display_name,
           });
         }

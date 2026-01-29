@@ -6,31 +6,56 @@ type Props = {
   open: boolean;
   order?: Order | null;
   onClose: () => void;
+  isAdminView?: boolean; // Si es true, muestra info de cliente y vendedora
 };
 
-export default function OrderDetailModal({ open, order, onClose }: Props) {
+export default function OrderDetailModal({ open, order, onClose, isAdminView = false }: Props) {
   if (!open || !order) return null;
   const o: any = order as any;
   const rawStatus = (o.status ?? "").toString();
+
+  // Función helper para formatear variantes de forma legible (igual que en perfil vendedor)
+  const formatVariant = (variantSize: string, variantColor: string) => {
+    const parts = [];
+    
+    // Color
+    if (variantColor && variantColor !== 'UNICO') {
+      const colorFormatted = variantColor.charAt(0).toUpperCase() + variantColor.slice(1).toLowerCase();
+      parts.push(colorFormatted);
+    } else if (variantColor === 'UNICO') {
+      parts.push('Color único');
+    }
+    
+    // Talle/Tamaño
+    if (variantSize && variantSize !== 'UNICO') {
+      parts.push(`T. ${variantSize}`);
+    } else if (variantSize === 'UNICO') {
+      parts.push('Talle único');
+    }
+    
+    return parts.length > 0 ? parts.join(', ') : 'N/A';
+  };
 
   const mapStatus = (s: string) => {
     const low = (s || "").toLowerCase();
     if (!low) return "—";
     if (low.includes("cancel")) return "Cancelado";
-    if (low.includes("finaliz") || low.includes("entreg")) return "Pedido entregado";
-    if (low.includes("asign") || low.includes("en camino") || low.includes("en camino")) return "En camino";
-    if (low.includes("esper") || low.includes("vended")) return "Esperando por vendedora";
+    if (low.includes("finaliz") || low.includes("entreg")) return "Entregado";
+    if (low.includes("en camino") || low.includes("en_camino") || low.includes("procesando")) return "En camino";
+    if (low.includes("asign")) return "Asignada a vendedora";
+    if (low.includes("esper") || low.includes("vended") || low.includes("pendiente")) return "Pendiente de asignación";
     // fallback: capitalize words
     return low.split(/[_\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   };
 
   const status = mapStatus(rawStatus);
-  // color mapping requested: azul -> En camino, amarillo -> Esperando vendedora,
-  // verde -> Pedido entregado, rojo -> Cancelado, gris neutro para otros
+  // color mapping: azul -> En camino, naranja -> Asignada, amarillo -> Pendiente,
+  // verde -> Entregado, rojo -> Cancelado, gris neutro para otros
   let statusColor = "bg-gray-100 text-gray-800";
   if (status === "En camino") statusColor = "bg-blue-100 text-blue-800";
-  else if (status === "Esperando vendedora") statusColor = "bg-yellow-100 text-yellow-800";
-  else if (status === "Pedido entregado") statusColor = "bg-green-100 text-green-800";
+  else if (status === "Asignada a vendedora") statusColor = "bg-orange-100 text-orange-800";
+  else if (status === "Pendiente de asignación") statusColor = "bg-yellow-100 text-yellow-800";
+  else if (status === "Entregado") statusColor = "bg-green-100 text-green-800";
   else if (status === "Cancelado") statusColor = "bg-red-100 text-red-800";
 
   return (
@@ -43,7 +68,14 @@ export default function OrderDetailModal({ open, order, onClose }: Props) {
           <div className="px-6 py-4 border-b flex items-start justify-between">
             <div>
               <h3 className="text-xl font-semibold">Pedido #{o.ID ?? o.id}</h3>
-              <div className="text-sm text-gray-500">{o.User?.name ?? o.User?.email}</div>
+              {isAdminView && (
+                <div className="text-sm text-gray-500">{o.User?.name ?? o.User?.email}</div>
+              )}
+              {isAdminView && o.AssignedToUser && (
+                <div className="text-sm text-gray-600 mt-1">
+                  <span className="font-medium">Vendedora:</span> {o.AssignedToUser.name ?? o.AssignedToUser.email}
+                </div>
+              )}
             </div>
             <div className="flex items-start gap-3">
               <div className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor}`}>{status || "—"}</div>
@@ -61,20 +93,32 @@ export default function OrderDetailModal({ open, order, onClose }: Props) {
             <div className="border rounded-md divide-y">
               {(o.items || o.Items || []).map((it: any, idx: number) => {
                 const imgSrc = resolveImageUrl(it.product_image ?? it.product?.image_url ?? it.product?.image ?? (it.product?.images && it.product.images[0]) ?? null);
+                
+                // Usar los campos variant_size y variant_color del backend
+                const variantSize = it.variant_size || it.VariantSize || '';
+                const variantColor = it.variant_color || it.VariantColor || '';
+                const variantText = formatVariant(variantSize, variantColor);
+                
                 return (
-                  <div key={it.ID ?? it.id ?? idx} className="p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div key={it.ID ?? it.id ?? idx} className="p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1">
                       {imgSrc ? (
-                        <img src={imgSrc as string} alt={it.product_name || it.product?.name} className="w-14 h-14 object-cover rounded" />
+                        <img src={imgSrc as string} alt={it.product_name || it.product?.name} className="w-14 h-14 object-cover rounded flex-shrink-0" />
                       ) : (
-                        <div className="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-500">Sin imagen</div>
+                        <div className="w-14 h-14 bg-gray-100 rounded flex items-center justify-center text-xs text-gray-500 flex-shrink-0">Sin imagen</div>
                       )}
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <div className="font-medium">{it.product_name || it.product?.name ?? it.product?.title ?? it.Product?.name ?? 'Producto'}</div>
+                        {variantText !== 'N/A' && (
+                          <div className="text-sm text-blue-600 font-medium">{variantText}</div>
+                        )}
                         <div className="text-sm text-gray-500">Cantidad: {it.quantity ?? it.Quantity}</div>
                       </div>
                     </div>
-                    <div className="text-sm font-semibold">${((it.price ?? it.Price) ?? 0).toFixed(2)}</div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-sm font-semibold">${((it.price ?? it.Price) ?? 0).toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">c/u</div>
+                    </div>
                   </div>
                 );
               })}

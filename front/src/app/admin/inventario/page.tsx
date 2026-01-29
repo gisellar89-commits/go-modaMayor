@@ -80,7 +80,7 @@ export default function InventarioPage() {
   const [selectedLocation, setSelectedLocation] = useState("deposito");
   const [selectedCategory, setSelectedCategory] = useState<number | "all">("all");
   const [selectedSupplier, setSelectedSupplier] = useState<number | "all">("all");
-  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out" | "reserved">("all");
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const locations = ["deposito", "mendoza", "salta"];
   
@@ -190,27 +190,29 @@ export default function InventarioPage() {
           if (resVariants.ok) {
             variants = await resVariants.json();
             
-            // Cargar stocks para cada variante
-            const variantsWithStocks = await Promise.all(
-              variants.map(async (variant) => {
-                const resStocks = await fetch(
-                  `http://localhost:8080/location-stocks?variant_id=${variant.ID}`,
-                  { headers: token ? { Authorization: `Bearer ${token}` } : {}, }
-                );
-                if (resStocks.ok) {
-                  const stocks = await resStocks.json();
-                  return { ...variant, stocks: stocks || [] };
-                }
-                return { ...variant, stocks: [] };
-              })
-            );
-            
-            return { ...product, variants: variantsWithStocks };
+            // Si tiene variantes, cargar stocks para cada una
+            if (variants.length > 0) {
+              const variantsWithStocks = await Promise.all(
+                variants.map(async (variant) => {
+                  const resStocks = await fetch(
+                    `http://localhost:8080/location-stocks?variant_id=${variant.ID}`,
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {}, }
+                  );
+                  if (resStocks.ok) {
+                    const stocks = await resStocks.json();
+                    return { ...variant, stocks: stocks || [] };
+                  }
+                  return { ...variant, stocks: [] };
+                })
+              );
+              
+              return { ...product, variants: variantsWithStocks };
+            }
           }
           
-          // Si no tiene variantes, cargar stocks del producto directamente
+          // Si no tiene variantes, cargar stocks del producto directamente (con variant_id NULL)
           const resStocks = await fetch(
-            `http://localhost:8080/location-stocks?product_id=${product.ID}`,
+            `http://localhost:8080/location-stocks?product_id=${product.ID}&variant_id=null`,
             { headers: token ? { Authorization: `Bearer ${token}` } : {}, }
           );
           if (resStocks.ok) {
@@ -378,6 +380,25 @@ export default function InventarioPage() {
       
       if (stockFilter === "low" && (totalStock === 0 || totalStock > lowStockThreshold)) {
         return false;
+      }
+      
+      if (stockFilter === "reserved") {
+        // Verificar si el producto o alguna de sus variantes tiene stock reservado en la ubicación seleccionada
+        let hasReserved = false;
+        
+        if (product.variants && product.variants.length > 0) {
+          // Producto con variantes: revisar cada variante
+          hasReserved = product.variants.some(variant => {
+            const reserved = getReservedForLocation(variant.stocks, selectedLocation);
+            return reserved > 0;
+          });
+        } else {
+          // Producto sin variantes: revisar sus stocks directos
+          const reserved = getReservedForLocation(product.stocks, selectedLocation);
+          hasReserved = reserved > 0;
+        }
+        
+        if (!hasReserved) return false;
       }
     }
     
@@ -562,12 +583,13 @@ export default function InventarioPage() {
             </label>
             <select
               value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value as "all" | "low" | "out")}
+              onChange={(e) => setStockFilter(e.target.value as "all" | "low" | "out" | "reserved")}
               className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Todos los productos</option>
               <option value="low">Stock bajo (≤ {lowStockThreshold})</option>
               <option value="out">Sin stock</option>
+              <option value="reserved">🔒 Con stock reservado</option>
             </select>
           </div>
         </div>
@@ -771,8 +793,17 @@ export default function InventarioPage() {
                               )}
                             </div>
                             
-                            <div className="flex-1 text-xs text-gray-600">
-                              Reservada: {reserved} · Disponible: {available}
+                            <div className="flex-1 text-xs">
+                              {reserved > 0 ? (
+                                <div className="inline-flex items-center gap-1 bg-yellow-100 border border-yellow-300 text-yellow-800 px-2 py-1 rounded">
+                                  <span className="font-semibold">🔒 Reservada: {reserved}</span>
+                                  <span className="text-yellow-600">· Disponible: {available}</span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-600">
+                                  Reservada: {reserved} · Disponible: {available}
+                                </span>
+                              )}
                             </div>
                             
                             <div className="flex gap-2">

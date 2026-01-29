@@ -23,16 +23,17 @@ export default function SalesList({ orders, loading, statuses, onChangeStatus, o
         <thead>
           <tr className="bg-gray-50">
             <th className="px-2 py-1 border">Orden ID</th>
-            <th className="px-2 py-1 border">Carrito ID</th>
             <th className="px-2 py-1 border">Cliente</th>
+            <th className="px-2 py-1 border">Vendedora</th>
             <th className="px-2 py-1 border">Estado</th>
             <th className="px-2 py-1 border">Total</th>
             <th className="px-2 py-1 border">Fecha</th>
+            <th className="px-2 py-1 border">Última edición</th>
             <th className="px-2 py-1 border">Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {orders.map(o => <OrderRow key={o.ID ?? o.id} order={o} statuses={statuses} onChangeStatus={onChangeStatus} onOpen={onOpen} onRequestChangeStatus={onRequestChangeStatus} onAssign={onAssign} sellers={sellers} />)}
+          {orders.map(o => <OrderRow key={o.ID ?? o.id} order={o} statuses={statuses} onChangeStatus={onChangeStatus} onOpen={onOpen} onRequestChangeStatus={onRequestChangeStatus} onAssign={onAssign} sellers={sellers} showLastEdit />)}
         </tbody>
       </table>
     </div>

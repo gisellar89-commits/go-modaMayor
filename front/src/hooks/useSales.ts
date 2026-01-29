@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import toast from "react-hot-toast";
-import { fetchOrders, updateOrderStatus, Order } from "../utils/api";
+import { fetchOrders, fetchMyOrders, updateOrderStatus, Order } from "../utils/api";
 
 export type SalesFilters = {
   q?: string;
@@ -11,7 +11,7 @@ export type SalesFilters = {
   pageSize?: number;
 };
 
-export default function useSales(initialFilters: SalesFilters = {}) {
+export default function useSales(initialFilters: SalesFilters = {}, userOrdersOnly: boolean = false) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +21,8 @@ export default function useSales(initialFilters: SalesFilters = {}) {
     setLoading(true);
     setError(null);
     try {
-      // Use fetchOrders for admin to see all orders
-      const data = await fetchOrders();
+      // Use fetchMyOrders for regular users, fetchOrders for admin
+      const data = userOrdersOnly ? await fetchMyOrders() : await fetchOrders();
       setOrders(data);
     } catch (e: any) {
       // If auth error, show a toast but don't forcibly clear token here
@@ -38,7 +38,7 @@ export default function useSales(initialFilters: SalesFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userOrdersOnly]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -64,12 +64,20 @@ export default function useSales(initialFilters: SalesFilters = {}) {
 
   const stats = {
     totalOrders: orders.length,
-    totalRevenue: orders.filter(o => (o.status || "").toLowerCase() === "finalizada").reduce((s, o) => s + (o.total ?? 0), 0),
+    totalRevenue: orders.filter(o => {
+      const status = (o.status || "").toLowerCase();
+      return status === "pagado" || status === "completado" || status === "completada" || status === "finalizada";
+    }).reduce((s, o) => s + (o.total ?? 0), 0),
     pending: orders.filter(o => {
       const status = (o.status || "").toLowerCase();
-      return status === "creada" || status === "asignada" || status === "procesando";
+      return status === "creada" || status === "asignada" || status === "procesando" || 
+             status === "pendiente_pago" || status === "listo_para_pago" ||
+             status === "esperando_vendedora";
     }).length,
-    completed: orders.filter(o => (o.status || "").toLowerCase() === "finalizada").length,
+    completed: orders.filter(o => {
+      const status = (o.status || "").toLowerCase();
+      return status === "pagado" || status === "completado" || status === "completada" || status === "finalizada";
+    }).length,
   };
 
   return {

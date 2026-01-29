@@ -1,13 +1,18 @@
 package settings
 
+import "log"
+
 // GetApplicablePriceTierFromList devuelve el tier aplicable según la cantidad
 // Recibe la lista de tiers como parámetro para evitar ciclo de importación
 func GetApplicablePriceTierFromList(tiers []PriceTier, quantity int) *PriceTier {
+	log.Printf("[DEBUG GetApplicablePriceTier] Buscando tier para quantity=%d", quantity)
+	
 	// Filtrar activos y ordenar por order_index
 	activeTiers := make([]PriceTier, 0)
 	for _, t := range tiers {
 		if t.Active {
 			activeTiers = append(activeTiers, t)
+			log.Printf("[DEBUG GetApplicablePriceTier] Tier activo: %s (min=%d, order_index=%d)", t.Name, t.MinQuantity, t.OrderIndex)
 		}
 	}
 
@@ -22,12 +27,14 @@ func GetApplicablePriceTierFromList(tiers []PriceTier, quantity int) *PriceTier 
 
 	var applicableTier *PriceTier
 
-	// Buscar el tier con mayor prioridad que cumpla la condición
+	// Buscar el tier con mayor MinQuantity que cumpla la condición
 	for i := range activeTiers {
 		tier := &activeTiers[i]
+		log.Printf("[DEBUG GetApplicablePriceTier] Evaluando tier: %s (min=%d, cumple=%v)", tier.Name, tier.MinQuantity, quantity >= tier.MinQuantity)
 		if quantity >= tier.MinQuantity {
-			if applicableTier == nil || tier.OrderIndex < applicableTier.OrderIndex {
+			if applicableTier == nil || tier.MinQuantity > applicableTier.MinQuantity {
 				applicableTier = tier
+				log.Printf("[DEBUG GetApplicablePriceTier] Tier seleccionado: %s", tier.Name)
 			}
 		}
 	}
@@ -37,9 +44,16 @@ func GetApplicablePriceTierFromList(tiers []PriceTier, quantity int) *PriceTier 
 		for i := range activeTiers {
 			if activeTiers[i].IsDefault {
 				applicableTier = &activeTiers[i]
+				log.Printf("[DEBUG GetApplicablePriceTier] Usando tier por defecto: %s", applicableTier.Name)
 				break
 			}
 		}
+	}
+
+	if applicableTier != nil {
+		log.Printf("[DEBUG GetApplicablePriceTier] RESULTADO FINAL: tier=%s (min=%d, order_index=%d)", applicableTier.Name, applicableTier.MinQuantity, applicableTier.OrderIndex)
+	} else {
+		log.Printf("[DEBUG GetApplicablePriceTier] RESULTADO FINAL: sin tier aplicable")
 	}
 
 	return applicableTier
@@ -47,11 +61,23 @@ func GetApplicablePriceTierFromList(tiers []PriceTier, quantity int) *PriceTier 
 
 // CalculatePriceForQuantityFromList calcula el precio usando una lista de tiers
 func CalculatePriceForQuantityFromList(costPrice float64, quantity int, tiers []PriceTier) float64 {
+	log.Printf("[DEBUG CalculatePriceForQuantityFromList] INPUT: costPrice=%.2f, quantity=%d, tiers=%d", 
+		costPrice, quantity, len(tiers))
+	
 	tier := GetApplicablePriceTierFromList(tiers, quantity)
 	if tier == nil {
+		log.Printf("[DEBUG CalculatePriceForQuantityFromList] No tier found, returning costPrice=%.2f", costPrice)
 		return costPrice
 	}
-	return tier.CalculatePrice(costPrice)
+	
+	log.Printf("[DEBUG CalculatePriceForQuantityFromList] Tier encontrado: Name=%s, FormulaType=%s, Multiplier=%.2f, MinQty=%d", 
+		tier.Name, tier.FormulaType, tier.Multiplier, tier.MinQuantity)
+	
+	calculatedPrice := tier.CalculatePrice(costPrice)
+	
+	log.Printf("[DEBUG CalculatePriceForQuantityFromList] OUTPUT: calculatedPrice=%.2f", calculatedPrice)
+	
+	return calculatedPrice
 }
 
 // ProductPrices contiene los precios calculados para un producto

@@ -950,7 +950,12 @@ func ListLocationStocks(c *gin.Context) {
 		query = query.Where("product_id = ?", productID)
 	}
 	if variantID != "" {
-		query = query.Where("variant_id = ?", variantID)
+		// Si variant_id es "null", buscar stocks sin variante (variant_id IS NULL)
+		if variantID == "null" {
+			query = query.Where("variant_id IS NULL")
+		} else {
+			query = query.Where("variant_id = ?", variantID)
+		}
 	}
 	if location != "" {
 		query = query.Where("location = ?", location)

@@ -133,7 +133,10 @@ export default function AdminPage() {
         totalProducts: totalProducts, // Usar el total correcto del backend
         totalOrders: orders.length,
         lowStockProducts: lowStockProducts.length,
-        totalRevenue: orders.filter(o => (o.status || "").toLowerCase() === "finalizada").reduce((sum: number, o: any) => sum + (o.total || 0), 0),
+        totalRevenue: orders.filter(o => {
+          const status = (o.status || "").toLowerCase();
+          return status === "pagado" || status === "completado" || status === "completada" || status === "finalizada";
+        }).reduce((sum: number, o: any) => sum + (o.total || 0), 0),
         recentOrders: orders.slice(0, 5),
         topProducts: topProducts.slice(0, 5),
         stockAlerts: lowStockProducts.slice(0, 5),

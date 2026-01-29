@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+// Unificar mínimo mayorista y vendedora
+const MIN_WHOLESALE_QUANTITY = 6;
 import { usePathname, useRouter } from "next/navigation";
 import useFocusTrap from "../hooks/useFocusTrap";
 import useCart from "../hooks/useCart";
@@ -21,6 +23,9 @@ export default function CartModal() {
   const { stockIssues, allAvailable, recheckStock } = useCartStockCheck();
   const [requestingSeller, setRequestingSeller] = useState(false);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [showSellerRequestedModal, setShowSellerRequestedModal] = useState(false);
+  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
+  const [sellerName, setSellerName] = useState<string>('');
   const [refreshKey, setRefreshKey] = useState(0); // Para forzar re-renders
   const messageTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
@@ -142,6 +147,20 @@ export default function CartModal() {
   const items = cart?.items ?? [];
   const summaryItems = summary?.items ?? [];
   
+  console.log('🔍 ========== CART MODAL DEBUG ==========');
+  console.log('📦 Cart data:', {
+    total_items: items.length,
+    cart_id: (cart as any)?.id ?? (cart as any)?.ID,
+    cart_status: (cart as any)?.estado ?? (cart as any)?.status
+  });
+  console.log('📊 Summary data:', {
+    summary_exists: !!summary,
+    summary_items_count: summaryItems.length,
+    total_quantity: summary?.total_quantity,
+    tier_name: summary?.tier?.display_name,
+    tier_min_quantity: summary?.tier?.min_quantity
+  });
+  
   // Si no hay usuario, usar carrito de invitado
   const hasServerItems = items.length > 0;
   const hasGuestItems = guestCart.length > 0;
@@ -196,9 +215,9 @@ export default function CartModal() {
             }
             hasTierDiscount = Math.abs(previousTierPrice - unitPrice) > 0.01;
           } else {
-            // Si no hay tier anterior, usar precio base (costo * 2)
-            previousTierPrice = costPrice * 2;
-            hasTierDiscount = Math.abs(previousTierPrice - unitPrice) > 0.01;
+            // Si no hay tier anterior (estamos en el tier base/minorista), NO hay descuento
+            previousTierPrice = unitPrice;
+            hasTierDiscount = false;
           }
         }
         
@@ -239,18 +258,76 @@ export default function CartModal() {
   // Separar items confirmados de pendientes
   const pendingItems = itemsWithPricing.filter(({ item }) => item.requires_stock_check && !item.stock_confirmed);
   const visibleForPricing = itemsWithPricing.filter(({ item }) => !(item.requires_stock_check && !item.stock_confirmed));
+
+  console.log('🔍 DEBUG CART MODAL:');
+  console.log('📦 Total items recibidos:', items.length);
+  console.log('📋 Items completos del carrito:', items.map(item => ({
+    id: (item as any).id ?? (item as any).ID,
+    product_id: item.product_id,
+    variant_id: item.variant_id,
+    quantity: item.quantity,
+    requires_stock_check: item.requires_stock_check,
+    stock_confirmed: item.stock_confirmed
+  })));
+  console.log('✅ Items con pricing (itemsWithPricing):', itemsWithPricing.length);
+  console.log('⏳ Items pendientes (pendingItems):', pendingItems.length, pendingItems.map(p => ({
+    id: p.item.ID,
+    qty: p.qty,
+    requires_check: p.item.requires_stock_check,
+    confirmed: p.item.stock_confirmed
+  })));
+  console.log('👁️ Items visibles para pricing (visibleForPricing):', visibleForPricing.length, visibleForPricing.map(v => ({
+    id: v.item.ID,
+    qty: v.qty,
+    requires_check: v.item.requires_stock_check,
+    confirmed: v.item.stock_confirmed
+  })));
+
+  // Función helper para obtener el stock disponible de un item
+  const getAvailableStock = (item: any): number | null => {
+    const issue = stockIssues.find(
+      i => i.product_id === item.product_id && i.variant_id === item.variant_id
+    );
+    return issue ? issue.available_stock : null;
+  };
   
-  // Calcular cantidades totales
-  const confirmedQuantity = visibleForPricing.reduce((acc, { qty }) => acc + qty, 0);
+  // Calcular cantidades totales - EXCLUIR items sin stock Y items pendientes de verificación
+  const confirmedQuantity = visibleForPricing.reduce((acc, { qty, item }) => {
+    const availableStock = getAvailableStock(item);
+    const isOutOfStock = availableStock !== null && availableStock === 0;
+    const isPending = item.requires_stock_check && !item.stock_confirmed;
+    return (isOutOfStock || isPending) ? acc : acc + qty;
+  }, 0);
   const pendingQuantity = pendingItems.reduce((acc, { qty }) => acc + qty, 0);
   
-  // Calcular totales
-  const subtotal = visibleForPricing.reduce((acc, { lineFinal }) => acc + lineFinal, 0);
-  const total = summary?.subtotal && summary.subtotal > 0 ? summary.subtotal : subtotal;
+  console.log('🔢 Cantidades calculadas:');
+  console.log('  - confirmedQuantity:', confirmedQuantity);
+  console.log('  - pendingQuantity:', pendingQuantity);
+  
+  // Calcular cantidad incluyendo items pendientes (para mostrar en el mensaje)
+  const totalQuantityIncludingPending = visibleForPricing.reduce((acc, { qty, item }) => {
+    const availableStock = getAvailableStock(item);
+    const isOutOfStock = availableStock !== null && availableStock === 0;
+    return isOutOfStock ? acc : acc + qty;
+  }, 0) + pendingQuantity;
+  
+  // Calcular totales - EXCLUIR items sin stock Y items pendientes del subtotal
+  const subtotal = visibleForPricing.reduce((acc, { lineFinal, item }) => {
+    const availableStock = getAvailableStock(item);
+    const isOutOfStock = availableStock !== null && availableStock === 0;
+    const isPending = item.requires_stock_check && !item.stock_confirmed;
+    return (isOutOfStock || isPending) ? acc : acc + lineFinal;
+  }, 0);
+  // Usar siempre el subtotal calculado en el frontend (ya excluye pendientes y sin stock)
+  const total = subtotal;
   
   // Calcular ahorro total por tier (comparando con precios del tier anterior)
   const totalSavings = itemsWithPricing.reduce((acc: number, item: any) => {
-    if (item.hasTierDiscount && !(item.item.requires_stock_check && !item.item.stock_confirmed)) {
+    const availableStock = getAvailableStock(item.item);
+    const isOutOfStock = availableStock !== null && availableStock === 0;
+    const isPending = item.item.requires_stock_check && !item.item.stock_confirmed;
+    
+    if (item.hasTierDiscount && !isOutOfStock && !isPending) {
       const itemSavings = (item.originalUnit - item.unitPrice) * item.qty;
       return acc + itemSavings;
     }
@@ -298,10 +375,42 @@ export default function CartModal() {
           )
         )}
 
-        {/* Alertas de problemas de stock */}
-        {stockIssues.length > 0 && (
+        {/* Alertas de problemas de stock - SOLO out_of_stock y insufficient_stock, excluyendo items pendientes */}
+        {stockIssues.filter(issue => {
+          // Excluir limited_stock
+          if (issue.issue_type === "limited_stock") return false;
+          
+          // IMPORTANTE: Solo mostrar issues de productos que estén en el carrito actual
+          const cartItem = items.find((i: any) => 
+            i.product_id === issue.product_id && i.variant_id === issue.variant_id
+          );
+          
+          // Si el item no está en el carrito, no mostrar el issue
+          if (!cartItem) return false;
+          
+          // Excluir items que son "pendientes de consulta" (requires_stock_check)
+          if (cartItem?.requires_stock_check && !cartItem?.stock_confirmed) return false;
+          
+          return true;
+        }).length > 0 && (
           <div className="mb-4 space-y-2">
-            {stockIssues.map((issue) => {
+            {stockIssues.filter(issue => {
+              // Excluir limited_stock
+              if (issue.issue_type === "limited_stock") return false;
+              
+              // IMPORTANTE: Solo mostrar issues de productos que estén en el carrito actual
+              const cartItem = items.find((i: any) => 
+                i.product_id === issue.product_id && i.variant_id === issue.variant_id
+              );
+              
+              // Si el item no está en el carrito, no mostrar el issue
+              if (!cartItem) return false;
+              
+              // Excluir items que son "pendientes de consulta"
+              if (cartItem?.requires_stock_check && !cartItem?.stock_confirmed) return false;
+              
+              return true;
+            }).map((issue) => {
               let bgColor = "from-red-50 to-pink-50";
               let borderColor = "border-red-400";
               let icon = "❌";
@@ -527,8 +636,18 @@ export default function CartModal() {
             const key = item.variant_id ? `${item.product_id}-${item.variant_id}` : String(item.product_id);
             const imgSrc = resolveImageUrl(item.product_image ?? item.product?.image_url ?? item.product?.image ?? (item.product?.images && item.product.images[0]) ?? null);
             const savings = originalUnit - unitPrice;
+            const isPending = item.requires_stock_check && !item.stock_confirmed;
+            const availableStock = isPending ? null : getAvailableStock(item);
+            // Solo marcar como "agotado" si NO es un item pendiente de consulta
+            const isOutOfStock = !isPending && availableStock !== null && availableStock === 0;
+            const isLowStock = !isPending && availableStock !== null && availableStock > 0 && availableStock <= 2;
+            
             return (
-              <div key={item.ID || key} className="flex items-start gap-3 bg-white rounded-xl p-4 shadow-sm border border-pink-100 hover:shadow-md transition-all">
+              <div key={item.ID || key} className={`flex items-start gap-3 rounded-xl p-4 shadow-sm border transition-all ${
+                isOutOfStock 
+                  ? 'bg-gray-50 border-gray-300 opacity-60' 
+                  : 'bg-white border-pink-100 hover:shadow-md'
+              }`}>
                 {imgSrc ? (
                   <img src={imgSrc as string} alt={item.product_name || item.product?.name} className="w-20 h-20 object-cover rounded-lg border-2 border-pink-100" />
                 ) : (
@@ -537,16 +656,33 @@ export default function CartModal() {
                 <div className="flex-1">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-bold text-gray-800">{item.product_name || item.product?.name}</div>
+                      <div className={`font-bold ${isOutOfStock ? 'text-gray-500' : 'text-gray-800'}`}>
+                        {item.product_name || item.product?.name}
+                        {isOutOfStock && (
+                          <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium border border-red-200">
+                            AGOTADO
+                          </span>
+                        )}
+                      </div>
                       {item.variant && (
                         <div className="text-sm text-gray-600 mt-1">
                           {item.variant.color ? <span className="text-pink-600">🎨 {item.variant.color}</span> : ''} 
                           {item.variant.size ? <span className="text-pink-600"> · 📏 {item.variant.size}</span> : ''}
                         </div>
                       )}
+                      {/* Notificación de stock bajo */}
+                      {isLowStock && !isOutOfStock && (
+                        <div className="text-xs text-amber-700 bg-gradient-to-r from-amber-50 to-orange-50 px-2 py-1 rounded-lg mt-2 inline-block border border-amber-200 font-medium">
+                          ⚠️ {availableStock === 1 ? 'Solo queda 1 unidad' : `Solo quedan ${availableStock} unidades`}
+                        </div>
+                      )}
                     </div>
                     <div className="text-sm text-right">
-                      {hasTierDiscount && savings > 0.01 ? (
+                      {isOutOfStock ? (
+                        <span className="text-sm text-gray-500 font-medium">
+                          Sin stock
+                        </span>
+                      ) : hasTierDiscount && savings > 0.01 ? (
                         <div className="flex flex-col items-end gap-0.5">
                           <span className="text-xs line-through text-gray-400">${originalUnit.toFixed(2)}</span>
                           <span className="text-base font-bold bg-gradient-to-r from-yellow-500 to-pink-500 bg-clip-text text-transparent">
@@ -567,11 +703,24 @@ export default function CartModal() {
                       </div>
                     )}
 
+                  {/* Mensaje de producto agotado - SOLO si NO es pendiente */}
+                  {isOutOfStock && !item.requires_stock_check && (
+                    <div className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg mt-3 border border-gray-300">
+                      💔 Este producto se agotó. No se incluirá en el total.
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between mt-3 gap-2">
                     <div className="flex items-center gap-2">
                       <button
-                        className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 rounded-lg font-bold text-pink-600 transition-all"
+                        disabled={isOutOfStock}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold transition-all ${
+                          isOutOfStock
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 text-pink-600'
+                        }`}
                         onClick={async () => {
+                          if (isOutOfStock) return;
                           const current = item.quantity ?? 1;
                           const next = Math.max(1, current - 1);
                           await updateQuantityVariant(item.product_id, item.variant_id, next);
@@ -580,12 +729,22 @@ export default function CartModal() {
                       >
                         -
                       </button>
-                      <div className="w-16 text-center py-1.5 border-2 border-pink-200 rounded-lg font-semibold text-gray-800 bg-white">
+                      <div className={`w-16 text-center py-1.5 border-2 rounded-lg font-semibold ${
+                        isOutOfStock
+                          ? 'border-gray-300 text-gray-500 bg-gray-100'
+                          : 'border-pink-200 text-gray-800 bg-white'
+                      }`}>
                         {item.quantity}
                       </div>
                       <button
-                        className="w-8 h-8 flex items-center justify-center bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 rounded-lg font-bold text-pink-600 transition-all"
+                        disabled={isOutOfStock}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold transition-all ${
+                          isOutOfStock
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-pink-100 to-yellow-100 hover:from-pink-200 hover:to-yellow-200 text-pink-600'
+                        }`}
                         onClick={async () => {
+                          if (isOutOfStock) return;
                           const current = item.quantity ?? 1;
                           const next = current + 1;
                           await updateQuantityVariant(item.product_id, item.variant_id, next);
@@ -597,7 +756,11 @@ export default function CartModal() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="text-base font-bold bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent">
+                      <div className={`text-base font-bold ${
+                        isOutOfStock
+                          ? 'text-gray-400 line-through'
+                          : 'bg-gradient-to-r from-yellow-600 to-pink-600 bg-clip-text text-transparent'
+                      }`}>
                         ${lineFinal.toFixed(2)}
                       </div>
                       <button
@@ -606,15 +769,14 @@ export default function CartModal() {
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          
-                          const productId = item.product_id || item.ProductID;
-                          const variantId = item.variant_id || item.VariantID;
-                          
+                          // Usar SIEMPRE product_id y variant_id
+                          const productId = item.product_id;
+                          const variantId = item.variant_id;
                           if (!productId || !variantId) {
-                            console.error('ERROR: Faltan product_id o variant_id');
+                            setInfoMessage('Error: faltan datos para eliminar el producto.');
+                            console.error('ERROR: Faltan product_id o variant_id', item);
                             return;
                           }
-                          
                           try {
                             await removeFromCart(productId, variantId);
                             await fetchCart();
@@ -622,6 +784,7 @@ export default function CartModal() {
                             await refetchSummary();
                             setRefreshKey(prev => prev + 1);
                           } catch (err) {
+                            setInfoMessage('No se pudo eliminar el producto del carrito.');
                             console.error('Error al eliminar del carrito:', err);
                           }
                         }}
@@ -677,25 +840,25 @@ export default function CartModal() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-gray-600">Cantidad total:</div>
-                  <div className="text-lg font-bold text-green-700">{summary.total_quantity} prendas</div>
+                  <div className="text-lg font-bold text-green-700">{confirmedQuantity} {confirmedQuantity === 1 ? 'prenda' : 'prendas'}</div>
                 </div>
               </div>
               
-              {summary.next_tier && (
+              {summary.next_tier && summary.next_tier.display_name !== summary.tier.display_name && (
                 <div className="mt-3 pt-3 border-t border-green-200">
                   <div className="flex items-center justify-between mb-2 text-xs">
                     <span className="text-gray-600">
                       Próximo nivel: <span className="font-semibold text-gray-800">{summary.next_tier.display_name}</span>
                     </span>
                     <span className="text-gray-600">
-                      Faltan <span className="font-bold text-orange-600">{summary.next_tier.quantity_to_unlock}</span> prendas
+                      Faltan <span className="font-bold text-orange-600">{Math.max(0, summary.next_tier.min_quantity - confirmedQuantity)}</span> {Math.max(0, summary.next_tier.min_quantity - confirmedQuantity) === 1 ? 'prenda' : 'prendas'}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                     <div 
                       className="bg-gradient-to-r from-green-400 to-emerald-500 h-2.5 rounded-full transition-all duration-500"
                       style={{ 
-                        width: `${Math.min(100, (summary.total_quantity / summary.next_tier.min_quantity) * 100)}%` 
+                        width: `${Math.min(100, (confirmedQuantity / summary.next_tier.min_quantity) * 100)}%` 
                       }}
                     />
                   </div>
@@ -784,23 +947,23 @@ export default function CartModal() {
               
               {pendingQuantity > 0 && (
                 <div className="text-xs text-gray-600 mb-4 bg-orange-50 p-3 rounded-lg border border-orange-200">
-                  <strong>Nota:</strong> {pendingQuantity} prenda(s) están pendientes de verificación por la vendedora y no se incluyen en el total mostado.
+                  <strong>Nota:</strong> {pendingQuantity} prenda(s) están pendientes de verificación por la vendedora y no se incluyen en el total mostrado.
                 </div>
               )}
             </>
           )}
           
           {/* Mensaje si no alcanza el mínimo para compra mayorista */}
-          {!isGuest && confirmedQuantity < 6 && (
+          {!isGuest && confirmedQuantity < MIN_WHOLESALE_QUANTITY && (
             <div className="text-sm text-gray-700 mb-4 bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
               <div className="flex items-start gap-2">
                 <span className="text-xl">ℹ️</span>
                 <div>
                   <div className="font-bold text-blue-800 mb-1">Compra mayorista</div>
                   <p className="text-sm">
-                    Necesitás al menos <strong>6 prendas</strong> para realizar una compra mayorista. 
+                    Necesitás al menos <strong>{MIN_WHOLESALE_QUANTITY} prendas</strong> para realizar una compra mayorista. 
                     {confirmedQuantity > 0 && (
-                      <> Actualmente tenés <strong>{confirmedQuantity}</strong>, te {confirmedQuantity === 1 ? 'falta' : 'faltan'} <strong className="text-blue-700">{6 - confirmedQuantity}</strong> más.</>
+                      <> Actualmente tenés <strong>{confirmedQuantity}</strong>, te {confirmedQuantity === 1 ? 'falta' : 'faltan'} <strong className="text-blue-700">{MIN_WHOLESALE_QUANTITY - confirmedQuantity}</strong> más.</>
                     )}
                   </p>
                 </div>
@@ -815,9 +978,39 @@ export default function CartModal() {
                   if (!cart) return;
                   const cartId = (cart as any)?.id ?? (cart as any)?.ID;
                   if (!cartId) return;
+                  
+                  // Check if user has address before requesting seller
                   try {
-                    setRequestingSeller(true);
                     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                    const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+                    
+                    if (userStr && token) {
+                      const user = JSON.parse(userStr);
+                      const addressRes = await fetch(`${API_BASE}/addresses/user/${user.id}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      
+                      if (addressRes.ok) {
+                        const addresses = await addressRes.json();
+                        if (!addresses || addresses.length === 0) {
+                          // No address found - show modal and STOP
+                          setShowAddAddressModal(true);
+                          setInfoMessage('⚠️ Necesitás agregar una dirección de envío antes de solicitar vendedora');
+                          if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
+                          messageTimerRef.current = window.setTimeout(() => setInfoMessage(null), 5000);
+                          return;
+                        }
+                      } else {
+                        // Error al verificar direcciones
+                        setInfoMessage('⚠️ Error al verificar direcciones. Por favor, agregá una dirección de envío.');
+                        if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
+                        messageTimerRef.current = window.setTimeout(() => setInfoMessage(null), 5000);
+                        setShowAddAddressModal(true);
+                        return;
+                      }
+                    }
+                    
+                    setRequestingSeller(true);
                     const res = await fetch(`${API_BASE}/checkout/${cartId}/request-assignment`, {
                       method: 'POST',
                       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -830,18 +1023,12 @@ export default function CartModal() {
                       messageTimerRef.current = window.setTimeout(() => setInfoMessage(null), 6000);
                     } else {
                       const data = await res.json();
-                      const successMsg = data.message || 'Solicitud enviada. Te contactarán pronto.';
-                      setInfoMessage(successMsg);
-                      if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
-                      messageTimerRef.current = window.setTimeout(() => setInfoMessage(null), 6000);
+                      setSellerName(data.seller_name || 'una vendedora');
                       // No llamar clearCart() para evitar notificaciones de tier_lost
                       // El backend ya convirtió el carrito en orden, solo refrescamos el estado
                       await fetchCart();
-                      setAnimateIn(false);
-                      setTimeout(() => {
-                        if (window.location.pathname === "/carrito") window.history.back();
-                        setOpen(false);
-                      }, 300);
+                      // Mostrar modal de confirmación
+                      setShowSellerRequestedModal(true);
                     }
                   } catch (e) {
                     alert('Error en la solicitud');
@@ -850,14 +1037,24 @@ export default function CartModal() {
                   }
                 }}
                 className={`w-full px-6 py-4 rounded-lg font-bold text-lg transition-all shadow-lg flex items-center justify-center gap-2 ${
-                  confirmedQuantity >= 6
+                  confirmedQuantity >= MIN_WHOLESALE_QUANTITY
                     ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 hover:shadow-xl'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                disabled={requestingSeller || confirmedQuantity < 6}
+                disabled={requestingSeller || confirmedQuantity < MIN_WHOLESALE_QUANTITY}
               >
-                {requestingSeller ? '⏳ Solicitando...' : confirmedQuantity >= 6 ? '💬 Solicitar vendedora' : '🔒 Mínimo 6 prendas'}
+                {requestingSeller ? '⏳ Solicitando...' : '💬 Solicitar vendedora'}
               </button>
+            )}
+            {confirmedQuantity < MIN_WHOLESALE_QUANTITY && (
+              <div className="mt-3 px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                <p className="text-center text-amber-800 font-semibold">
+                  ⚠️ Necesitás al menos {MIN_WHOLESALE_QUANTITY - confirmedQuantity} prenda{MIN_WHOLESALE_QUANTITY - confirmedQuantity !== 1 ? 's' : ''} más para solicitar vendedora
+                </p>
+                <p className="text-center text-amber-700 text-sm mt-1">
+                  (Mínimo requerido: {MIN_WHOLESALE_QUANTITY} prendas)
+                </p>
+              </div>
             )}
             
             <button 
@@ -875,6 +1072,132 @@ export default function CartModal() {
           </div>
         </div>
       </aside>
+
+      {/* Modal: Falta dirección de envío */}
+      {showAddAddressModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">📍</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Dirección de envío requerida
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Necesitás agregar una dirección de envío antes de solicitar vendedora para poder coordinar la entrega de tu pedido.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 mb-6 border border-amber-200">
+              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <span>✨</span> ¿Por qué necesitamos tu dirección?
+              </h4>
+              <ul className="text-sm text-gray-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-600 font-bold mt-0.5">•</span>
+                  <span>Para coordinar la entrega de tu pedido</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-600 font-bold mt-0.5">•</span>
+                  <span>Para que la vendedora conozca tu ubicación</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-orange-600 font-bold mt-0.5">•</span>
+                  <span>Para calcular costos de envío si corresponde</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAddAddressModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddAddressModal(false);
+                  router.push('/perfil/direcciones');
+                }}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-600 hover:to-orange-700 transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                Agregar dirección
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación: Vendedora asignada */}
+      {showSellerRequestedModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">✅</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¡Solicitud enviada!
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Tu pedido fue asignado a <strong>{sellerName}</strong> quien se contactará contigo pronto para coordinar el pago y la entrega.
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-6 border border-blue-200">
+              <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <span>📋</span> ¿Qué sigue?
+              </h4>
+              <ul className="text-sm text-gray-700 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold mt-0.5">1.</span>
+                  <span>La vendedora verificará el stock disponible</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold mt-0.5">2.</span>
+                  <span>Te contactará para coordinar pago y entrega</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-blue-600 font-bold mt-0.5">3.</span>
+                  <span>Podés ver el estado en <strong>"Mis pedidos"</strong></span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowSellerRequestedModal(false);
+                  setAnimateIn(false);
+                  setTimeout(() => {
+                    if (window.location.pathname === "/carrito") window.history.back();
+                    setOpen(false);
+                  }, 300);
+                }}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  setShowSellerRequestedModal(false);
+                  router.push('/perfil/pedidos');
+                  setAnimateIn(false);
+                  setTimeout(() => {
+                    if (window.location.pathname === "/carrito") window.history.back();
+                    setOpen(false);
+                  }, 300);
+                }}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                Ver mi pedido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,9 @@
 package settings
 
-import "gorm.io/gorm"
+import (
+	"log"
+	"gorm.io/gorm"
+)
 
 type PricingConfig struct {
 	gorm.Model
@@ -33,16 +36,23 @@ type PriceTier struct {
 
 // CalculatePrice calcula el precio según el tipo de fórmula
 func (pt *PriceTier) CalculatePrice(costPrice float64) float64 {
+	log.Printf("[DEBUG PriceTier.CalculatePrice] INPUT: costPrice=%.2f, FormulaType=%s, Multiplier=%.2f, Percentage=%.2f, FlatAmount=%.2f", 
+		costPrice, pt.FormulaType, pt.Multiplier, pt.Percentage, pt.FlatAmount)
+	
+	var result float64
 	switch pt.FormulaType {
 	case "multiplier":
-		return costPrice * pt.Multiplier
+		result = costPrice * pt.Multiplier
 	case "percentage_markup":
-		return costPrice + (costPrice * pt.Percentage / 100.0)
+		result = costPrice + (costPrice * pt.Percentage / 100.0)
 	case "flat_amount":
-		return costPrice + pt.FlatAmount
+		result = costPrice + pt.FlatAmount
 	default:
-		return costPrice
+		result = costPrice
 	}
+	
+	log.Printf("[DEBUG PriceTier.CalculatePrice] OUTPUT: result=%.2f", result)
+	return result
 }
 
 // Topbar settings editable by admin/encargado

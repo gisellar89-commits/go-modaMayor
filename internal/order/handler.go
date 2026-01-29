@@ -10,6 +10,7 @@ import (
 	"go-modaMayor/internal/product"
 	"go-modaMayor/internal/settings"
 	"go-modaMayor/internal/user"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -89,7 +90,7 @@ func ListOrdersByUser(c *gin.Context) {
 // Listar todos los pedidos (solo admin)
 func ListAllOrders(c *gin.Context) {
 	var orders []Order
-	if err := config.DB.Preload("Items").Preload("Items.Product").Find(&orders).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("AssignedToUser").Preload("Items").Preload("Items.Product").Find(&orders).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -111,11 +112,50 @@ func UpdateOrderStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Guardar estado anterior para logging
+	oldStatus := order.Status
 	order.Status = input.Status
+	
 	if err := config.DB.Save(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Si la orden tiene un carrito asociado, actualizar también el estado del carrito
+	// para mantener sincronizados los estados
+	if order.CartID != nil && *order.CartID > 0 {
+		var carrito cart.Cart
+		if err := config.DB.First(&carrito, *order.CartID).Error; err != nil {
+			log.Printf("⚠️ Error cargando carrito #%d: %v", *order.CartID, err)
+		} else {
+			// Mapear el estado de la orden al estado del carrito
+			cartEstado := mapOrderStatusToCartStatus(order.Status)
+			
+			// Solo actualizar si es diferente
+			if carrito.Estado != cartEstado {
+				log.Printf("🔄 Actualizando estado del carrito #%d de '%s' a '%s' (orden #%d: %s -> %s)", 
+					carrito.ID, carrito.Estado, cartEstado, order.ID, oldStatus, order.Status)
+				
+				// Si el nuevo estado es "pagado", usar la lógica completa del carrito para descontar stock
+				if cartEstado == "pagado" && oldStatus != "pagado" {
+					// Llamar al endpoint de actualización de estado del carrito
+					// que tiene toda la lógica de descuento de stock
+					carrito.Estado = cartEstado
+					if err := config.DB.Save(&carrito).Error; err != nil {
+						log.Printf("❌ Error actualizando estado del carrito: %v", err)
+					}
+				} else {
+					// Para otros cambios de estado, simplemente actualizar
+					carrito.Estado = cartEstado
+					if err := config.DB.Save(&carrito).Error; err != nil {
+						log.Printf("❌ Error actualizando estado del carrito: %v", err)
+					}
+				}
+			}
+		}
+	}
+	
 	// Registrar log de auditoría
 	userID, _ := c.Get("user_id")
 	config.DB.Create(&audit.AuditLog{
@@ -123,9 +163,29 @@ func UpdateOrderStatus(c *gin.Context) {
 		Action:   "update_status",
 		Entity:   "order",
 		EntityID: order.ID,
-		Details:  "Nuevo estado: " + order.Status,
+		Details:  fmt.Sprintf("Estado cambiado de '%s' a '%s'", oldStatus, order.Status),
 	})
 	c.JSON(http.StatusOK, order)
+}
+
+// Mapea estados de orden a estados de carrito
+func mapOrderStatusToCartStatus(orderStatus string) string {
+	switch orderStatus {
+	case "pendiente_asignacion":
+		return "esperando_vendedora"
+	case "pendiente":
+		return "esperando_vendedora"
+	case "pagado":
+		return "pagado"
+	case "enviado":
+		return "enviado"
+	case "completado":
+		return "completado"
+	case "cancelado":
+		return "cancelado"
+	default:
+		return orderStatus
+	}
 }
 
 // Handler para que el vendedor finalice la compra de un carrito asignado
@@ -185,49 +245,63 @@ func CheckoutCart(c *gin.Context) {
 	for _, item := range confirmedItems {
 		totalQty += item.Quantity
 	}
-	for _, item := range confirmedItems {
-		// Buscar el stock de la variante en LocationStock
-		var stock product.LocationStock
-		err := config.DB.Where("product_id = ? AND variant_id = ?", item.ProductID, item.VariantID).First(&stock).Error
-		if err != nil || stock.Stock < item.Quantity {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Stock insuficiente para el producto/variante"})
-			return
-		}
-		// Descontar stock
-		stock.Stock -= item.Quantity
-		config.DB.Save(&stock)
+	       var itemsWithStock []cart.CartItem
+	       var itemsOutOfStock []cart.CartItem
+			       for _, item := range confirmedItems {
+				       // Re-verificar stock en depósito principal (ubicación por defecto: 'deposito')
+				       var stock product.LocationStock
+				       err := config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", item.ProductID, item.VariantID, "deposito").First(&stock).Error
+				       if err != nil || stock.Stock < item.Quantity {
+					       // Marcar el item como pendiente por falta de stock durante el proceso
+					       config.DB.Model(&cart.CartItem{}).Where("id = ?", item.ID).Updates(map[string]interface{}{
+						       "RequiresStockCheck": true,
+						       "StockConfirmed": false,
+						       "PendingReason": "out_of_stock_during_process",
+						       "Location": "", // Limpiar ubicación para forzar selección
+					       })
+					       itemsOutOfStock = append(itemsOutOfStock, item)
+					       continue
+				       }
+				       // Descontar stock
+				       stock.Stock -= item.Quantity
+				       config.DB.Save(&stock)
 
-		// Obtener precio del producto base
-		var prod product.Product
-		if err := config.DB.First(&prod, item.ProductID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Producto no encontrado"})
-			return
-		}
-		// Determinar el precio según la cantidad total usando price tiers
-		var tiers []settings.PriceTier
-		config.DB.Where("active = ?", true).Order("order_index ASC").Find(&tiers)
-		precio := settings.CalculatePriceForQuantityFromList(prod.CostPrice, totalQty, tiers)
+				       // Obtener precio del producto base
+				       var prod product.Product
+				       if err := config.DB.First(&prod, item.ProductID).Error; err != nil {
+					       c.JSON(http.StatusBadRequest, gin.H{"error": "Producto no encontrado"})
+					       return
+				       }
+				       // Determinar el precio según la cantidad total usando price tiers
+				       var tiers []settings.PriceTier
+				       config.DB.Where("active = ?", true).Order("order_index ASC").Find(&tiers)
+				       precio := settings.CalculatePriceForQuantityFromList(prod.CostPrice, totalQty, tiers)
 
-		// Si no hay tiers o el precio es igual al costo, usar fallback
-		if len(tiers) == 0 || precio == prod.CostPrice {
-			switch {
-			case totalQty >= cfg.MinQtyDiscount2:
-				precio = prod.CostPrice + (prod.CostPrice * cfg.Discount2Percent)
-			case totalQty >= cfg.MinQtyDiscount1:
-				precio = prod.CostPrice + (prod.CostPrice * cfg.Discount1Percent)
-			case totalQty >= cfg.MinQtyWholesale:
-				precio = prod.CostPrice + (prod.CostPrice * cfg.WholesalePercent)
-			default:
-				precio = prod.CostPrice
-			}
-		}
-		orderItems = append(orderItems, OrderItem{
-			ProductID: prod.ID,
-			Quantity:  item.Quantity,
-			Price:     precio,
-		})
-		total += precio * float64(item.Quantity)
-	}
+				       // Si no hay tiers o el precio es igual al costo, usar fallback
+				       if len(tiers) == 0 || precio == prod.CostPrice {
+					       switch {
+					       case totalQty >= cfg.MinQtyDiscount2:
+						       precio = prod.CostPrice + (prod.CostPrice * cfg.Discount2Percent)
+					       case totalQty >= cfg.MinQtyDiscount1:
+						       precio = prod.CostPrice + (prod.CostPrice * cfg.Discount1Percent)
+					       case totalQty >= cfg.MinQtyWholesale:
+						       precio = prod.CostPrice + (prod.CostPrice * cfg.WholesalePercent)
+					       default:
+						       precio = prod.CostPrice
+					       }
+				       }
+				       orderItems = append(orderItems, OrderItem{
+					       ProductID: prod.ID,
+					       Quantity:  item.Quantity,
+					       Price:     precio,
+				       })
+				       total += precio * float64(item.Quantity)
+				       itemsWithStock = append(itemsWithStock, item)
+			       }
+	       if len(itemsWithStock) == 0 {
+		       c.JSON(http.StatusBadRequest, gin.H{"error": "No hay stock suficiente para procesar ningún producto. Los productos sin stock han sido marcados como pendientes."})
+		       return
+	       }
 
 	// Buscar la orden existente creada cuando se solicitó vendedora
 	var orden Order
@@ -376,6 +450,7 @@ func SubmitCartForAssignment(c *gin.Context) {
 		Status: "pendiente_asignacion",
 		Total:  total,
 		Items:  orderItems,
+		CartID: &carrito.ID,
 	}
 
 	// Primero intentamos asignar automáticamente por round-robin a una vendedora activa
@@ -387,6 +462,8 @@ func SubmitCartForAssignment(c *gin.Context) {
 
 	//si no hay vendedoras activas, dejamos la orden pendiente y notificamos a admins
 	if len(sellers) == 0 {
+		// Asegurarse de que la orden tenga el cart_id asociado
+		orden.CartID = &carrito.ID
 		if err := config.DB.Create(&orden).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -485,6 +562,8 @@ func SubmitCartForAssignment(c *gin.Context) {
 
 	orden.AssignedTo = chosen.ID
 	orden.Status = "asignada"
+	// Asegurarse de que la orden tenga el cart_id asociado
+	orden.CartID = &carrito.ID
 	if err := tx.Create(&orden).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -600,7 +679,7 @@ func ListOrdersForSeller(c *gin.Context) {
 	userID := userIDIfc.(uint)
 
 	var orders []Order
-	if err := config.DB.Preload("Items").Preload("Items.Product").Where("assigned_to = ?", userID).Find(&orders).Error; err != nil {
+	if err := config.DB.Preload("User").Preload("Items").Preload("Items.Product").Where("assigned_to = ?", userID).Find(&orders).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -631,15 +710,16 @@ func SalesRankingCurrentMonth(c *gin.Context) {
 	// Join con tabla de usuarios para obtener nombre/email/rol
 	// Filtrar solo vendedores usando assigned_to en lugar de user_id
 	// user_id es el cliente que hizo la orden, assigned_to es la vendedora asignada
-	config.DB.Table("orders").
-		Select("orders.assigned_to as user_id, users.name, users.email, users.role, COUNT(orders.id) as ventas").
-		Joins("JOIN users ON users.id = orders.assigned_to").
-		Where("orders.created_at >= ? AND orders.created_at <= ?", firstDay, lastDay).
-		Where("orders.assigned_to IS NOT NULL").                     // Solo órdenes con vendedora asignada
-		Where("users.role IN ?", []string{"vendedor", "vendedora"}). // Solo vendedores/as
-		Group("orders.assigned_to, users.name, users.email, users.role").
-		Order("ventas DESC").
-		Scan(&results)
+	       config.DB.Table("orders").
+		       Select("orders.assigned_to as user_id, users.name, users.email, users.role, COUNT(orders.id) as ventas").
+		       Joins("JOIN users ON users.id = orders.assigned_to").
+		       Where("orders.created_at >= ? AND orders.created_at <= ?", firstDay, lastDay).
+		       Where("orders.assigned_to IS NOT NULL").                     // Solo órdenes con vendedora asignada
+		       Where("users.role IN ?", []string{"vendedor", "vendedora"}). // Solo vendedores/as
+		       Where("orders.status IN ?", []string{"pagado", "completado", "enviado"}). // Solo estados válidos
+		       Group("orders.assigned_to, users.name, users.email, users.role").
+		       Order("ventas DESC").
+		       Scan(&results)
 	c.JSON(http.StatusOK, results)
 }
 

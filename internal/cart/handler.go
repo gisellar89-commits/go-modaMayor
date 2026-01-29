@@ -5,6 +5,9 @@ import (
 	"go-modaMayor/config"
 	"go-modaMayor/internal/notification"
 	"go-modaMayor/internal/product"
+	"go-modaMayor/internal/remito"
+	"go-modaMayor/internal/settings"
+	"go-modaMayor/internal/user"
 	"log"
 	"net/http"
 	"time"
@@ -21,6 +24,268 @@ func getUserID(c *gin.Context) (uint, bool) {
 	}
 	id, ok := uid.(uint)
 	return id, ok
+}
+
+// Helper function to map cart status to order status
+func mapCartStatusToOrderStatus(cartStatus string) string {
+	switch cartStatus {
+	case "esperando_vendedora":
+		return "procesando"
+	case "listo_para_pago":
+		return "pendiente_pago"
+	case "pagado":
+		return "pagado"
+	case "enviado":
+		return "enviado"
+	case "completado":
+		return "completado"
+	case "expirado":
+		return "cancelado"
+	default:
+		return "creada"
+	}
+}
+
+// Helper function to update related order status
+func updateRelatedOrderStatus(tx *gorm.DB, cartID uint, newStatus string) error {
+	// Use raw SQL update to avoid import cycle with order package
+	orderStatus := mapCartStatusToOrderStatus(newStatus)
+	
+	result := tx.Table("orders").
+		Where("cart_id = ?", cartID).
+		Update("status", orderStatus)
+	
+	if result.Error != nil {
+		return result.Error
+	}
+	
+	if result.RowsAffected > 0 {
+		// Get the order ID for logging
+		var orderID uint
+		tx.Table("orders").Select("id").Where("cart_id = ?", cartID).Scan(&orderID)
+		log.Printf("✅ Orden #%d actualizada a estado: %s (desde cart estado: %s)", orderID, orderStatus, newStatus)
+	}
+	
+	return nil
+}
+
+// Helper function to determine tier level from quantity
+func getTierFromQuantity(quantity int) int {
+	if quantity >= 12 {
+		return 2 // Descuento2
+	} else if quantity >= 6 {
+		return 1 // Descuento1
+	}
+	return 0 // WholesalePrice
+}
+
+// Helper function to calculate frozen tier price from existing item price
+// This maintains the original price structure even if product prices changed
+func calculateFrozenTierPrice(existingPrice float64, oldQuantity int, newQuantity int) float64 {
+	oldTier := getTierFromQuantity(oldQuantity)
+	newTier := getTierFromQuantity(newQuantity)
+	
+	// If tier didn't change, return the frozen price
+	if oldTier == newTier {
+		return existingPrice
+	}
+	
+	// Tier changed: we need to infer the frozen price structure
+	// Strategy: use the existing price to reverse-engineer the frozen wholesale/discount prices
+	
+	// First, determine what the frozen wholesale price is
+	var frozenWholesalePrice, frozenDiscount1Price, frozenDiscount2Price float64
+	
+	switch oldTier {
+	case 0: // Old tier was wholesale
+		frozenWholesalePrice = existingPrice
+		frozenDiscount1Price = existingPrice // Could apply ratio, but safer to keep same
+		frozenDiscount2Price = existingPrice
+	case 1: // Old tier was discount1
+		frozenDiscount1Price = existingPrice
+		frozenWholesalePrice = existingPrice // In practice, not used if upgrading
+		frozenDiscount2Price = existingPrice
+	case 2: // Old tier was discount2
+		frozenDiscount2Price = existingPrice
+		frozenWholesalePrice = existingPrice
+		frozenDiscount1Price = existingPrice
+	}
+	
+	// Now return the price for the new tier
+	switch newTier {
+	case 2:
+		return frozenDiscount2Price
+	case 1:
+		return frozenDiscount1Price
+	default:
+		return frozenWholesalePrice
+	}
+}
+
+// Helper function to calculate price based on tier (quantity-based pricing)
+func calculatePriceForTier(product product.Product, totalQuantity int) float64 {
+	// Obtener tiers de la base de datos de forma dinámica
+	var tiers []settings.PriceTier
+	config.DB.Where("active = ?", true).Order("min_quantity DESC").Find(&tiers)
+	
+	// Encontrar el tier aplicable (el más alto que cumpla la cantidad mínima)
+	for _, tier := range tiers {
+		if totalQuantity >= tier.MinQuantity {
+			// Usar los precios pre-calculados del producto según el tier
+			switch tier.Name {
+			case "discount2":
+				if product.Discount2Price > 0 {
+					return product.Discount2Price
+				}
+			case "discount1":
+				if product.Discount1Price > 0 {
+					return product.Discount1Price
+				}
+			case "wholesale":
+				if product.WholesalePrice > 0 {
+					return product.WholesalePrice
+				}
+			}
+		}
+	}
+	
+	// Fallback al precio mayorista
+	if product.WholesalePrice > 0 {
+		return product.WholesalePrice
+	}
+	return product.CostPrice
+}
+
+// Helper function to sync cart items to order items
+func syncCartItemsToOrder(tx *gorm.DB, cartID uint) error {
+	// Get the order associated with this cart
+	var orderID uint
+	err := tx.Table("orders").Select("id").Where("cart_id = ?", cartID).Scan(&orderID).Error
+	if err != nil || orderID == 0 {
+		// No order exists yet, skip sync
+		return nil
+	}
+
+	// Get all current cart items
+	var cartItems []CartItem
+	if err := tx.Where("cart_id = ?", cartID).Preload("Product").Preload("Variant").Find(&cartItems).Error; err != nil {
+		return err
+	}
+
+	// Get existing order items with their base costs to detect price changes
+	var existingOrderItems []struct {
+		ProductID uint
+		VariantID uint
+		Quantity  int
+		Price     float64
+		BaseCost  float64
+	}
+	tx.Table("order_items").
+		Select("product_id, variant_id, quantity, price, base_cost").
+		Where("order_id = ?", orderID).
+		Scan(&existingOrderItems)
+
+	// Calculate OLD total quantity (before changes)
+	oldTotalQuantity := 0
+	for _, item := range existingOrderItems {
+		oldTotalQuantity += item.Quantity
+	}
+
+	// Calculate NEW total quantity (after changes)
+	newTotalQuantity := 0
+	for _, item := range cartItems {
+		newTotalQuantity += item.Quantity
+	}
+
+	// Extract frozen data from existing order items
+	type FrozenData struct {
+		Price    float64
+		BaseCost float64
+	}
+	existingItems := make(map[string]FrozenData)
+	for _, item := range existingOrderItems {
+		key := fmt.Sprintf("%d-%d", item.ProductID, item.VariantID)
+		existingItems[key] = FrozenData{
+			Price:    item.Price,
+			BaseCost: item.BaseCost,
+		}
+	}
+
+	// Log quantity change for visibility
+	if len(existingOrderItems) > 0 && len(cartItems) > 0 && oldTotalQuantity != newTotalQuantity {
+		oldTier := getTierFromQuantity(oldTotalQuantity)
+		newTier := getTierFromQuantity(newTotalQuantity)
+		log.Printf("📊 Cantidad cambió: %d → %d prendas (tier %d → tier %d)", 
+			oldTotalQuantity, newTotalQuantity, oldTier, newTier)
+	}
+
+	// Delete all existing order items
+	if err := tx.Exec("DELETE FROM order_items WHERE order_id = ?", orderID).Error; err != nil {
+		return err
+	}
+
+	// Recreate order items from cart items
+	totalAmount := 0.0
+	for _, item := range cartItems {
+		var price float64
+		var baseCost float64
+		itemKey := fmt.Sprintf("%d-%d", item.ProductID, item.VariantID)
+		
+		// Get current product cost
+		currentCost := item.Product.CostPrice
+		
+		if frozenData, exists := existingItems[itemKey]; exists {
+			// Item existed before - check if price changed
+			frozenBaseCost := frozenData.BaseCost
+			
+			if frozenBaseCost == currentCost {
+				// NO price change: recalculate with new tier
+				price = calculatePriceForTier(item.Product, newTotalQuantity)
+				baseCost = currentCost
+				log.Printf("♻️ Recalculando tier (sin cambio de precio) - Producto %d variante %d: $%.2f → $%.2f", 
+					item.ProductID, item.VariantID, frozenData.Price, price)
+			} else {
+				// YES price change: freeze old price
+				price = frozenData.Price
+				baseCost = frozenBaseCost
+				log.Printf("🔒 Precio congelado (hubo cambio de costo: $%.2f → $%.2f) - Producto %d variante %d: $%.2f", 
+					frozenBaseCost, currentCost, item.ProductID, item.VariantID, price)
+			}
+		} else {
+			// New item: calculate price based on current tier
+			price = calculatePriceForTier(item.Product, newTotalQuantity)
+			baseCost = currentCost
+			log.Printf("🆕 Nuevo item - Costo: $%.2f, Precio con tier: $%.2f", baseCost, price)
+		}
+
+		// Extract variant info
+		variantSize := ""
+		variantColor := ""
+		if item.VariantID != nil && item.Variant != nil {
+			variantSize = item.Variant.Size
+			variantColor = item.Variant.Color
+		}
+
+		// Insert into order_items with variant details and base_cost
+		result := tx.Exec(`
+			INSERT INTO order_items (order_id, product_id, variant_id, variant_size, variant_color, quantity, price, base_cost, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+		`, orderID, item.ProductID, item.VariantID, variantSize, variantColor, item.Quantity, price, baseCost)
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		totalAmount += float64(item.Quantity) * price
+	}
+
+	// Update order total
+	if err := tx.Table("orders").Where("id = ?", orderID).Update("total", totalAmount).Error; err != nil {
+		return err
+	}
+
+	log.Printf("✅ Orden #%d sincronizada: %d items, total: $%.2f", orderID, len(cartItems), totalAmount)
+	return nil
 }
 
 // Listar carrito del usuario
@@ -50,15 +315,40 @@ func GetCart(c *gin.Context) {
 			return
 		}
 	}
+	
+	// Log para debug: verificar valores de los items
+	log.Printf("🛒 GetCart - Cart ID: %d, Total items: %d", cart.ID, len(cart.Items))
+	for _, item := range cart.Items {
+		log.Printf("🛒 GetCart - Item ID=%d, product_id=%d, variant_id=%d, requires_stock_check=%v, stock_confirmed=%v",
+			item.ID, item.ProductID, item.VariantID, item.RequiresStockCheck, item.StockConfirmed)
+	}
+	
 	c.JSON(http.StatusOK, cart)
+}
+
+// Helper para verificar disponibilidad de stock
+func checkStockAvailability(productID uint, variantID *uint, quantity int) bool {
+	// Si no hay variant_id (producto sin variantes), retornar true
+	if variantID == nil {
+		return true
+	}
+	
+	var totalStock int64
+	if err := config.DB.Table("location_stocks").
+		Where("product_id = ? AND variant_id = ? AND deleted_at IS NULL", productID, *variantID).
+		Select("COALESCE(SUM(stock - reserved), 0)").
+		Scan(&totalStock).Error; err != nil {
+		return false
+	}
+	return int(totalStock) >= quantity
 }
 
 // Agregar producto al carrito
 type AddToCartInput struct {
-	ProductID          uint `json:"product_id" binding:"required,gt=0"`
-	VariantID          uint `json:"variant_id" binding:"required,gt=0"`
-	Quantity           int  `json:"quantity" binding:"required,gt=0"`
-	RequiresStockCheck bool `json:"requires_stock_check,omitempty"`
+	ProductID          uint   `json:"product_id" binding:"required,gt=0"`
+	VariantID          *uint  `json:"variant_id"` // Opcional - se buscará automáticamente si no se envía
+	Quantity           int    `json:"quantity" binding:"required,gt=0"`
+	RequiresStockCheck bool   `json:"requires_stock_check,omitempty"`
 	// Optional location to reserve from (only used by sellers)
 	Location string `json:"location,omitempty"`
 }
@@ -77,9 +367,35 @@ func AddToCart(c *gin.Context) {
 	}
 	var input AddToCartInput
 	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Printf("❌ AddToCart - Error parsing JSON: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	log.Printf("✅ AddToCart - Input recibido: product_id=%d, variant_id=%v, quantity=%d, requires_stock_check=%v",
+		input.ProductID, input.VariantID, input.Quantity, input.RequiresStockCheck)
+	
+	// Si no se envió variant_id, intentar buscar la primera variante disponible del producto
+	var variantID *uint
+	if input.VariantID == nil || *input.VariantID == 0 {
+		var variant product.ProductVariant
+		if err := config.DB.Where("product_id = ? AND deleted_at IS NULL", input.ProductID).
+			Order("id ASC").First(&variant).Error; err != nil {
+			// Si no hay variantes, usar NULL (productos sin variantes)
+			if err == gorm.ErrRecordNotFound {
+				variantID = nil
+				log.Printf("📦 AddToCart - Producto sin variantes, usando variant_id=NULL")
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al buscar variantes del producto"})
+				return
+			}
+		} else {
+			variantID = &variant.ID
+			log.Printf("📦 AddToCart - Variante no especificada, usando primera disponible: variant_id=%d", variant.ID)
+		}
+	} else {
+		variantID = input.VariantID
+	}
+	
 	var cart Cart
 	// allow specifying cart_id for seller/admin actions
 	cartIDStr := c.Query("cart_id")
@@ -147,14 +463,29 @@ func AddToCart(c *gin.Context) {
 		}
 	}
 	var item CartItem
-	if err := config.DB.Where("cart_id = ? AND product_id = ? AND variant_id = ?", cart.ID, input.ProductID, input.VariantID).First(&item).Error; err == nil {
+	// Buscar item existente, manejando el caso de variant_id NULL
+	query := config.DB.Where("cart_id = ? AND product_id = ?", cart.ID, input.ProductID)
+	if variantID == nil {
+		query = query.Where("variant_id IS NULL")
+	} else {
+		query = query.Where("variant_id = ?", *variantID)
+	}
+	
+	if err := query.First(&item).Error; err == nil {
 		// update quantity; if client marked requires_stock_check, preserve/upgrade flag
 		// If a location reservation exists, attempt to reserve additional quantity in same location
 		if input.Location != "" && item.Location != "" && item.Location == input.Location {
 			// try to reserve additional amount
 			delta := input.Quantity
 			var ls product.LocationStock
-			if err := config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", input.ProductID, input.VariantID, input.Location).First(&ls).Error; err == nil {
+			var err error
+			if variantID != nil && *variantID > 0 {
+				err = config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", input.ProductID, *variantID, input.Location).First(&ls).Error
+			} else {
+				err = config.DB.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND location = ?", input.ProductID, input.Location).First(&ls).Error
+			}
+			
+			if err == nil {
 				available := ls.Stock - ls.Reserved
 				if available < delta {
 					c.JSON(http.StatusBadRequest, gin.H{"error": "Stock insuficiente en la ubicación seleccionada"})
@@ -174,15 +505,33 @@ func AddToCart(c *gin.Context) {
 		item.Quantity += input.Quantity
 		if input.RequiresStockCheck {
 			item.RequiresStockCheck = true
-			item.StockConfirmed = false
+			// Auto-confirmar si hay stock disponible
+			if checkStockAvailability(input.ProductID, variantID, item.Quantity) {
+				item.StockConfirmed = true
+			} else {
+				item.StockConfirmed = false
+			}
+		} else {
+			// Si no requiere verificación, auto-confirmar
+			item.StockConfirmed = true
 		}
 		config.DB.Save(&item)
 	} else {
-		item = CartItem{CartID: cart.ID, ProductID: input.ProductID, VariantID: input.VariantID, Quantity: input.Quantity, RequiresStockCheck: input.RequiresStockCheck, StockConfirmed: false}
+		// Determinar si auto-confirmar el stock
+		// Solo auto-confirmar si NO requiere verificación de stock
+		stockConfirmed := !input.RequiresStockCheck
+		item = CartItem{CartID: cart.ID, ProductID: input.ProductID, VariantID: variantID, Quantity: input.Quantity, RequiresStockCheck: input.RequiresStockCheck, StockConfirmed: stockConfirmed}
 		// If a location provided, attempt to reserve
 		if input.Location != "" {
 			var ls product.LocationStock
-			if err := config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", input.ProductID, input.VariantID, input.Location).First(&ls).Error; err == nil {
+			var err error
+			if variantID != nil && *variantID > 0 {
+				err = config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", input.ProductID, *variantID, input.Location).First(&ls).Error
+			} else {
+				err = config.DB.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND location = ?", input.ProductID, input.Location).First(&ls).Error
+			}
+			
+			if err == nil {
 				available := ls.Stock - ls.Reserved
 				if available < input.Quantity {
 					c.JSON(http.StatusBadRequest, gin.H{"error": "Stock insuficiente en la ubicación seleccionada"})
@@ -210,6 +559,14 @@ func AddToCart(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Producto agregado al carrito"})
 		return
 	}
+	
+	// Sync cart items to order items if order exists
+	if err := config.DB.Transaction(func(tx *gorm.DB) error {
+		return syncCartItemsToOrder(tx, cart.ID)
+	}); err != nil {
+		log.Printf("⚠️ Error sincronizando items con orden: %v", err)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{"message": "Producto agregado al carrito", "cart": updatedCart})
 }
 
@@ -225,7 +582,15 @@ func RemoveFromCart(c *gin.Context) {
 
 	// NUEVO: Primero buscar el item para obtener el cart_id correcto
 	var item CartItem
-	itemQuery := config.DB.Where("product_id = ? AND variant_id = ?", productID, variantID)
+	itemQuery := config.DB.Where("product_id = ?", productID)
+	
+	// Manejar variant_id NULL correctamente
+	if variantID == "" || variantID == "null" || variantID == "0" {
+		itemQuery = itemQuery.Where("variant_id IS NULL")
+	} else {
+		itemQuery = itemQuery.Where("variant_id = ?", variantID)
+	}
+	
 	if err := itemQuery.First(&item).Error; err != nil {
 		log.Printf("❌ RemoveFromCart - Item NO encontrado en la base de datos: product_id=%s, variant_id=%s", productID, variantID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Item no encontrado en el carrito"})
@@ -234,21 +599,32 @@ func RemoveFromCart(c *gin.Context) {
 
 	log.Printf("🗑️ RemoveFromCart - Item encontrado: ID=%d, cart_id=%d, product_id=%s, variant_id=%s", item.ID, item.CartID, productID, variantID)
 
-	// Buscar el carrito activo del usuario actual (no el del item)
-	// Esto evita conflictos con items de carritos viejos o de otros usuarios
+	// Obtener cart_id del query parameter (para vendedoras) o buscar el carrito activo del usuario
+	cartIDParam := c.Query("cart_id")
 	var cart Cart
-	if err := config.DB.Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).Order("id DESC").First(&cart).Error; err != nil {
-		log.Printf("❌ RemoveFromCart - Carrito activo NO encontrado para user_id=%d", userID)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
-		return
+	
+	if cartIDParam != "" {
+		// Si viene cart_id, usarlo directamente (vendedora editando carrito de cliente)
+		if err := config.DB.Where("id = ?", cartIDParam).First(&cart).Error; err != nil {
+			log.Printf("❌ RemoveFromCart - Carrito con ID=%s NO encontrado", cartIDParam)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
+			return
+		}
+		log.Printf("🗑️ RemoveFromCart - Usando carrito especificado: cart_id=%d, estado=%s", cart.ID, cart.Estado)
+	} else {
+		// Si no viene cart_id, buscar el carrito activo del usuario actual
+		if err := config.DB.Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).Order("id DESC").First(&cart).Error; err != nil {
+			log.Printf("❌ RemoveFromCart - Carrito activo NO encontrado para user_id=%d", userID)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
+			return
+		}
+		log.Printf("🗑️ RemoveFromCart - Carrito activo encontrado: cart_id=%d, user_id=%d, estado=%s", cart.ID, cart.UserID, cart.Estado)
 	}
 
-	log.Printf("🗑️ RemoveFromCart - Carrito activo encontrado: cart_id=%d, user_id=%d, estado=%s", cart.ID, cart.UserID, cart.Estado)
-
-	// Verificar que el item pertenezca al carrito activo del usuario
+	// Verificar que el item pertenezca al carrito
 	if item.CartID != cart.ID {
-		log.Printf("❌ RemoveFromCart - Item pertenece a otro carrito: item.cart_id=%d, user_cart_id=%d", item.CartID, cart.ID)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Item no encontrado en tu carrito activo"})
+		log.Printf("❌ RemoveFromCart - Item pertenece a otro carrito: item.cart_id=%d, cart_id=%d", item.CartID, cart.ID)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Item no encontrado en este carrito"})
 		return
 	}
 	// Permitir modificaciones solo en estados editables
@@ -270,7 +646,8 @@ func RemoveFromCart(c *gin.Context) {
 	if item.ReservedQuantity > 0 && item.Location != "" {
 		log.Printf("🗑️ RemoveFromCart - Liberando stock reservado: %d unidades en location=%s", item.ReservedQuantity, item.Location)
 		var ls product.LocationStock
-		if err := config.DB.Where("product_id = ? AND variant_id = ? AND location = ?", item.ProductID, item.VariantID, item.Location).First(&ls).Error; err == nil {
+		// Usar Unscoped para encontrar stocks incluso de productos eliminados
+		if err := config.DB.Unscoped().Where("product_id = ? AND variant_id = ? AND location = ?", item.ProductID, item.VariantID, item.Location).First(&ls).Error; err == nil {
 			if ls.Reserved >= item.ReservedQuantity {
 				ls.Reserved -= item.ReservedQuantity
 			} else {
@@ -278,6 +655,8 @@ func RemoveFromCart(c *gin.Context) {
 			}
 			config.DB.Save(&ls)
 			log.Printf("✅ RemoveFromCart - Stock liberado correctamente")
+		} else {
+			log.Printf("⚠️ RemoveFromCart - No se encontró LocationStock para liberar (producto posiblemente eliminado): %v", err)
 		}
 	}
 
@@ -289,6 +668,13 @@ func RemoveFromCart(c *gin.Context) {
 	}
 
 	log.Printf("✅ RemoveFromCart - Item ID=%d eliminado exitosamente del carrito %d", item.ID, cart.ID)
+
+	// Sync cart items to order items if order exists
+	if err := config.DB.Transaction(func(tx *gorm.DB) error {
+		return syncCartItemsToOrder(tx, cart.ID)
+	}); err != nil {
+		log.Printf("⚠️ Error sincronizando items con orden: %v", err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Producto eliminado del carrito"})
 }
@@ -623,6 +1009,14 @@ func UpdateCartItem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Sync cart items to order items if order exists
+	if err := config.DB.Transaction(func(tx *gorm.DB) error {
+		return syncCartItemsToOrder(tx, cart.ID)
+	}); err != nil {
+		log.Printf("⚠️ Error sincronizando items con orden: %v", err)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{"message": "Cantidad actualizada en el carrito"})
 }
 
@@ -641,7 +1035,195 @@ func GetCartsForSeller(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, carts)
+	
+	// Agregar order_id y dirección del usuario a cada carrito
+	type Address struct {
+		ID             uint   `json:"id"`
+		Label          string `json:"label"`
+		RecipientName  string `json:"recipient_name"`
+		RecipientPhone string `json:"recipient_phone"`
+		Street         string `json:"street"`
+		Floor          string `json:"floor"`
+		City           string `json:"city"`
+		State          string `json:"state"`
+		PostalCode     string `json:"postal_code"`
+		Country        string `json:"country"`
+		Reference      string `json:"reference"`
+		IsDefault      bool   `json:"is_default"`
+	}
+	
+	type CartWithOrderAndAddress struct {
+		Cart
+		OrderID        *uint    `json:"order_id"`
+		DefaultAddress *Address `json:"default_address"`
+		Summary        *struct {
+			TotalQuantity    int                    `json:"total_quantity"`
+			CurrentTier      *settings.PriceTier    `json:"current_tier"`
+			NextTier         *settings.PriceTier    `json:"next_tier"`
+			QuantityToUnlock int                    `json:"quantity_to_unlock"`
+			Items            []map[string]interface{} `json:"items"`
+			Subtotal         float64                `json:"subtotal"`
+			Total            float64                `json:"total"`
+		} `json:"summary"`
+	}
+	
+	cartsWithData := make([]CartWithOrderAndAddress, 0, len(carts))
+	for _, cart := range carts {
+		var order struct {
+			ID uint `json:"id"`
+		}
+		// Buscar la orden asociada a este carrito específico usando cart_id
+		var orderID *uint
+		if err := config.DB.Table("orders").
+			Select("id").
+			Where("cart_id = ?", cart.ID).
+			First(&order).Error; err == nil {
+			orderID = &order.ID
+		}
+		
+		// Buscar la dirección predeterminada del usuario
+		var address Address
+		var defaultAddress *Address
+		if err := config.DB.Table("addresses").
+			Where("user_id = ? AND is_default = ?", cart.UserID, true).
+			First(&address).Error; err == nil {
+			defaultAddress = &address
+		}
+		
+		// Calcular el summary del carrito con precios según tier
+		summary := calculateCartSummaryForSeller(cart)
+		
+		cartsWithData = append(cartsWithData, CartWithOrderAndAddress{
+			Cart:           cart,
+			OrderID:        orderID,
+			DefaultAddress: defaultAddress,
+			Summary:        summary,
+		})
+	}
+	
+	c.JSON(http.StatusOK, cartsWithData)
+}
+
+// Helper para calcular summary del carrito para vendedora
+func calculateCartSummaryForSeller(cart Cart) *struct {
+	TotalQuantity    int                    `json:"total_quantity"`
+	CurrentTier      *settings.PriceTier    `json:"current_tier"`
+	NextTier         *settings.PriceTier    `json:"next_tier"`
+	QuantityToUnlock int                    `json:"quantity_to_unlock"`
+	Items            []map[string]interface{} `json:"items"`
+	Subtotal         float64                `json:"subtotal"`
+	Total            float64                `json:"total"`
+} {
+	// Calcular cantidad total de items confirmados
+	totalQuantity := 0
+	for _, item := range cart.Items {
+		if item.StockConfirmed {
+			totalQuantity += item.Quantity
+		}
+	}
+	
+	// Obtener tiers y determinar tier actual
+	var tiers []settings.PriceTier
+	config.DB.Where("active = ?", true).Order("min_quantity ASC").Find(&tiers)
+	
+	var currentTier *settings.PriceTier
+	for i := range tiers {
+		if totalQuantity >= tiers[i].MinQuantity {
+			currentTier = &tiers[i]
+		}
+	}
+	
+	// Calcular items con precios
+	items := make([]map[string]interface{}, 0)
+	subtotal := 0.0
+	
+	for _, item := range cart.Items {
+		// Usar la misma lógica que GetCartSummary para consistencia
+		unitPrice := calculatePriceForTier(item.Product, totalQuantity)
+		
+		itemSubtotal := unitPrice * float64(item.Quantity)
+		// Solo sumar al subtotal los items confirmados
+		if item.StockConfirmed {
+			subtotal += itemSubtotal
+		}
+		
+		variantName := ""
+		if item.Variant != nil && (item.Variant.Color != "" || item.Variant.Size != "") {
+			variantName = item.Variant.Color + " / " + item.Variant.Size
+		}
+		
+		imageURL := item.Product.ImageURL
+		if item.Variant != nil && item.Variant.ImageURL != "" {
+			imageURL = item.Variant.ImageURL
+		}
+		
+		// Construir objeto de variante con todos los datos necesarios
+		var variantData map[string]interface{}
+		if item.Variant != nil {
+			variantData = map[string]interface{}{
+				"id":    item.Variant.ID,
+				"sku":   item.Variant.SKU,
+				"color": item.Variant.Color,
+				"size":  item.Variant.Size,
+			}
+		}
+		
+		// Construir objeto de producto con código
+		productData := map[string]interface{}{
+			"name": item.Product.Name,
+			"code": item.Product.Code,
+		}
+		
+		items = append(items, map[string]interface{}{
+			"cart_item_id":  item.ID,
+			"product_id":    item.ProductID,
+			"product_name":  item.Product.Name,
+			"product":       productData,
+			"variant_id":    item.VariantID,
+			"variant_name":  variantName,
+			"variant":       variantData,
+			"quantity":      item.Quantity,
+			"unit_price":    unitPrice,
+			"subtotal":      itemSubtotal,
+			"image_url":     imageURL,
+			"stock_confirmed": item.StockConfirmed,
+			"requires_stock_check": item.RequiresStockCheck,
+		})
+	}
+	
+	// Determinar siguiente tier
+	var nextTier *settings.PriceTier
+	quantityToUnlock := 0
+	if currentTier != nil {
+		for i := range tiers {
+			if tiers[i].MinQuantity > currentTier.MinQuantity {
+				nextTier = &tiers[i]
+				quantityToUnlock = tiers[i].MinQuantity - totalQuantity
+				break
+			}
+		}
+	} else if len(tiers) > 0 {
+		nextTier = &tiers[0]
+		quantityToUnlock = tiers[0].MinQuantity - totalQuantity
+	}
+	
+	return &struct {
+		TotalQuantity    int                    `json:"total_quantity"`
+		CurrentTier      *settings.PriceTier    `json:"current_tier"`
+		NextTier         *settings.PriceTier    `json:"next_tier"`
+		QuantityToUnlock int                    `json:"quantity_to_unlock"`
+		Items            []map[string]interface{} `json:"items"`
+		Subtotal         float64                `json:"subtotal"`
+		Total            float64                `json:"total"`
+	}{
+		TotalQuantity:    totalQuantity,
+		CurrentTier:      currentTier,
+		NextTier:         nextTier,
+		QuantityToUnlock: quantityToUnlock,
+		Items:            items,
+		Subtotal:         subtotal,
+		Total:            subtotal,
+	}
 }
 
 // Obtener un carrito por ID (vendedor sólo si le pertenece, admin puede cualquiera)
@@ -698,8 +1280,10 @@ func UpdateCartStatus(c *gin.Context) {
 			return
 		}
 	}
-	// If transitioning to 'listo_para_pago' we must finalize reserved stock and decrement real stock atomically
+	// Handle state transitions with stock management
 	target := input.Estado
+	
+	// Transition to 'listo_para_pago': Only verify stock availability, don't deduct yet
 	if target == "listo_para_pago" {
 		// Set expiration timestamps (24 hours from now)
 		now := time.Now()
@@ -709,49 +1293,95 @@ func UpdateCartStatus(c *gin.Context) {
 		errTx := config.DB.Transaction(func(tx *gorm.DB) error {
 			// reload items with lock (for update) to avoid races
 			var items []CartItem
-			if err := tx.Where("cart_id = ?", cartObj.ID).Find(&items).Error; err != nil {
+			if err := tx.Preload("Product").Where("cart_id = ?", cartObj.ID).Find(&items).Error; err != nil {
 				return err
 			}
-			// iterate items and commit stock changes
+			// iterate items and RESERVE stock (if not already reserved)
 			for _, it := range items {
+				log.Printf("[DEPURACION] Item antes de reservar: ID=%d, product_id=%d, variant_id=%v, quantity=%d, reserved_quantity=%d, location=%s, stock_confirmed=%v", it.ID, it.ProductID, it.VariantID, it.Quantity, it.ReservedQuantity, it.Location, it.StockConfirmed)
+				// Reservar stock para TODOS los items al pasar a listo_para_pago
+				// El campo RequiresStockCheck solo indica si necesita confirmación manual de ubicación,
+				// pero al pasar a listo_para_pago TODOS deben tener stock reservado
+				
 				if it.ReservedQuantity > 0 && it.Location != "" {
+					// Ya tiene stock reservado, solo verificar que aún está disponible
 					var ls product.LocationStock
-					if err := tx.Where("product_id = ? AND variant_id = ? AND location = ?", it.ProductID, it.VariantID, it.Location).First(&ls).Error; err != nil {
+					var err error
+					if it.VariantID != nil && *it.VariantID > 0 {
+						err = tx.Where("product_id = ? AND variant_id = ? AND location = ?", it.ProductID, *it.VariantID, it.Location).First(&ls).Error
+					} else {
+						err = tx.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND location = ?", it.ProductID, it.Location).First(&ls).Error
+					}
+					if err != nil {
 						return err
 					}
-					// verify we have reserved >= needed and stock >= reserved
+					// verify we have reserved >= needed
 					if ls.Reserved < it.ReservedQuantity {
 						return fmt.Errorf("reservas insuficientes en la ubicación %s para el producto %d", it.Location, it.ProductID)
 					}
-					if ls.Stock < it.ReservedQuantity {
-						return fmt.Errorf("stock físico insuficiente en la ubicación %s para el producto %d", it.Location, it.ProductID)
+					// Verify available stock (stock - reserved should still have enough)
+					available := ls.Stock - ls.Reserved
+					if available < 0 {
+						return fmt.Errorf("stock inconsistente en la ubicación %s para el producto %d", it.Location, it.ProductID)
 					}
-					ls.Stock -= it.ReservedQuantity
-					ls.Reserved -= it.ReservedQuantity
-					if err := tx.Save(&ls).Error; err != nil {
-						return err
-					}
-					// clear reserved quantity on the cart item
-					if err := tx.Model(&CartItem{}).Where("id = ?", it.ID).Updates(map[string]interface{}{"reserved_quantity": 0}).Error; err != nil {
-						return err
-					}
+					// Ya está reservado, no se modifica
+					log.Printf("✅ listo_para_pago - Item %d ya tiene %d unidades reservadas en %s", it.ID, it.ReservedQuantity, it.Location)
+					log.Printf("[DEPURACION] Item ya reservado: ID=%d, location=%s, reserved_quantity=%d", it.ID, it.Location, it.ReservedQuantity)
 				} else {
-					// no reservation: try to find any location with available stock
+					// NO tiene stock reservado: necesitamos reservar ahora
 					var ls product.LocationStock
-					if err := tx.Where("product_id = ? AND variant_id = ? AND (stock - reserved) >= ?", it.ProductID, it.VariantID, it.Quantity).First(&ls).Error; err != nil {
+					var err error
+					if it.VariantID != nil && *it.VariantID > 0 {
+						err = tx.Where("product_id = ? AND variant_id = ? AND (stock - reserved) >= ?", it.ProductID, *it.VariantID, it.Quantity).First(&ls).Error
+					} else {
+						err = tx.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND (stock - reserved) >= ?", it.ProductID, it.Quantity).First(&ls).Error
+					}
+					log.Printf("[DEPURACION] Resultado query location_stocks: err=%v, ls={ID=%d, product_id=%d, variant_id=%d, location=%s, stock=%d, reserved=%d}", err, ls.ID, ls.ProductID, ls.VariantID, ls.Location, ls.Stock, ls.Reserved)
+					if err != nil {
 						return fmt.Errorf("sin stock disponible para product %d variant %d", it.ProductID, it.VariantID)
 					}
-					ls.Stock -= it.Quantity
-					if err := tx.Save(&ls).Error; err != nil {
-						return err
+					// AHORA reservar el stock
+					available := ls.Stock - ls.Reserved
+					if available < it.Quantity {
+						return fmt.Errorf("stock insuficiente en %s para producto %d (disponible: %d, necesario: %d)", ls.Location, it.ProductID, available, it.Quantity)
 					}
+					ls.Reserved += it.Quantity
+					if err := tx.Save(&ls).Error; err != nil {
+						return fmt.Errorf("error al reservar stock: %v", err)
+					}
+					// Actualizar el item con la ubicación y cantidad reservada
+					it.Location = ls.Location
+					it.ReservedQuantity = it.Quantity
+					if err := tx.Save(&it).Error; err != nil {
+						return fmt.Errorf("error al actualizar item: %v", err)
+					}
+					log.Printf("✅ listo_para_pago - Reservadas %d unidades de producto %d en ubicación %s", it.Quantity, it.ProductID, ls.Location)
+					log.Printf("[DEPURACION] Reserva realizada: item_id=%d, location=%s, reserved_quantity=%d", it.ID, it.Location, it.ReservedQuantity)
 				}
+				log.Printf("[DEPURACION] Item después de reservar: ID=%d, product_id=%d, variant_id=%v, quantity=%d, reserved_quantity=%d, location=%s, stock_confirmed=%v", it.ID, it.ProductID, it.VariantID, it.Quantity, it.ReservedQuantity, it.Location, it.StockConfirmed)
 			}
+			
+			// RECARGAR items actualizados antes de generar remitos
+			var itemsActualizados []CartItem
+			if err := tx.Where("cart_id = ? AND deleted_at IS NULL", cartObj.ID).Find(&itemsActualizados).Error; err != nil {
+				return fmt.Errorf("error al recargar items: %v", err)
+			}
+			
+			// GENERAR REMITOS INTERNOS si hay items de ubicaciones que no son deposito
+			if err := generarRemitosInternosParaCarrito(tx, cartObj.ID, itemsActualizados); err != nil {
+				log.Printf("❌ Error al generar remitos internos: %v", err)
+				return fmt.Errorf("error al generar remitos internos: %v", err)
+			}
+			
 			// finally update cart status and expiration timestamps
 			cartObj.Estado = target
 			cartObj.ReservedAt = &now
 			cartObj.ExpiresAt = &expiresAt
 			if err := tx.Save(&cartObj).Error; err != nil {
+				return err
+			}
+			// Update related order status
+			if err := updateRelatedOrderStatus(tx, cartObj.ID, target); err != nil {
 				return err
 			}
 			return nil
@@ -768,6 +1398,139 @@ func UpdateCartStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Estado actualizado", "cart": cartObj})
 		return
 	}
+	
+	// Transition to 'pagado': NOW we deduct the stock permanently
+	if target == "pagado" {
+		// Obtener información del usuario que está ejecutando la acción (vendedor/admin)
+		var actionUser user.User
+		actionUserID := userIDIfc.(uint)
+		userName := ""
+		if err := config.DB.First(&actionUser, actionUserID).Error; err != nil {
+			log.Printf("⚠️ No se pudo cargar usuario que ejecuta la acción: %v", err)
+		} else {
+			userName = actionUser.Name
+		}
+		
+		// use transaction to ensure atomicity
+		errTx := config.DB.Transaction(func(tx *gorm.DB) error {
+			// reload items with lock (for update) to avoid races
+			var items []CartItem
+			if err := tx.Preload("Product").Where("cart_id = ?", cartObj.ID).Find(&items).Error; err != nil {
+				return err
+			}
+			// iterate items and commit stock changes (deduct from physical stock)
+			for _, it := range items {
+				// Descontar stock para TODOS los items al pagar
+				// Ya no usamos RequiresStockCheck para esto - todos los items deben descontar stock
+				
+				if it.ReservedQuantity > 0 && it.Location != "" {
+					var ls product.LocationStock
+					var err error
+					if it.VariantID != nil && *it.VariantID > 0 {
+						err = tx.Where("product_id = ? AND variant_id = ? AND location = ?", it.ProductID, *it.VariantID, it.Location).First(&ls).Error
+					} else {
+						err = tx.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND location = ?", it.ProductID, it.Location).First(&ls).Error
+					}
+					if err != nil {
+						return err
+					}
+					// verify we have reserved >= needed and stock >= reserved
+					if ls.Reserved < it.ReservedQuantity {
+						return fmt.Errorf("reservas insuficientes en la ubicación %s para el producto %d", it.Location, it.ProductID)
+					}
+					if ls.Stock < it.ReservedQuantity {
+						return fmt.Errorf("stock físico insuficiente en la ubicación %s para el producto %d", it.Location, it.ProductID)
+					}
+					// NOW deduct from physical stock and release reservation
+					ls.Stock -= it.ReservedQuantity
+					ls.Reserved -= it.ReservedQuantity
+					if err := tx.Save(&ls).Error; err != nil {
+						return err
+					}
+					
+					// Registrar movimiento de stock por venta
+					movement := product.StockMovement{
+						ProductID:     it.ProductID,
+						VariantID:     it.VariantID,
+						Location:      it.Location,
+						MovementType:  "venta",
+						Quantity:      -it.ReservedQuantity, // negativo porque es salida
+						PreviousStock: ls.Stock + it.ReservedQuantity, // stock antes del descuento
+						NewStock:      ls.Stock,
+						Reference:     fmt.Sprintf("Venta - Carrito #%d", cartObj.ID),
+						UserID:        &actionUserID,
+						UserName:      userName,
+					}
+					if err := tx.Create(&movement).Error; err != nil {
+						log.Printf("⚠️ Error al registrar movimiento de stock: %v", err)
+						// No fallar la transacción por esto
+					}
+					
+					// clear reserved quantity on the cart item
+					if err := tx.Model(&CartItem{}).Where("id = ?", it.ID).Updates(map[string]interface{}{"reserved_quantity": 0}).Error; err != nil {
+						return err
+					}
+				} else {
+					// no reservation: try to find any location with available stock
+					var ls product.LocationStock
+					var err error
+					if it.VariantID != nil && *it.VariantID > 0 {
+						err = tx.Where("product_id = ? AND variant_id = ? AND (stock - reserved) >= ?", it.ProductID, *it.VariantID, it.Quantity).First(&ls).Error
+					} else {
+						err = tx.Where("product_id = ? AND (variant_id IS NULL OR variant_id = 0) AND (stock - reserved) >= ?", it.ProductID, it.Quantity).First(&ls).Error
+					}
+					if err != nil {
+						return fmt.Errorf("sin stock disponible para product %d variant %d", it.ProductID, it.VariantID)
+					}
+					
+					prevStock := ls.Stock
+					ls.Stock -= it.Quantity
+					if err := tx.Save(&ls).Error; err != nil {
+						return err
+					}
+					
+					// Registrar movimiento de stock por venta
+					movement := product.StockMovement{
+						ProductID:     it.ProductID,
+						VariantID:     it.VariantID,
+						Location:      ls.Location,
+						MovementType:  "venta",
+						Quantity:      -it.Quantity, // negativo porque es salida
+						PreviousStock: prevStock,
+						UserID:        &actionUserID,
+						UserName:      userName,
+						NewStock:      ls.Stock,
+						Reference:     fmt.Sprintf("Venta - Carrito #%d", cartObj.ID),
+					}
+					if err := tx.Create(&movement).Error; err != nil {
+						log.Printf("⚠️ Error al registrar movimiento de stock: %v", err)
+						// No fallar la transacción por esto
+					}
+				}
+			}
+			// update cart status
+			cartObj.Estado = target
+			if err := tx.Save(&cartObj).Error; err != nil {
+				return err
+			}
+			// Update related order status
+			if err := updateRelatedOrderStatus(tx, cartObj.ID, target); err != nil {
+				return err
+			}
+			return nil
+		})
+		if errTx != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": errTx.Error()})
+			return
+		}
+		// return updated cart
+		if err := config.DB.Preload("Items").Preload("Items.Product").Preload("Items.Variant").First(&cartObj, cartObj.ID).Error; err != nil {
+			c.JSON(http.StatusOK, gin.H{"message": "Estado actualizado y stock descontado", "cart": cartObj})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "Estado actualizado y stock descontado", "cart": cartObj})
+		return
+	}
 
 	// For other state transitions, just update
 	cartObj.Estado = target
@@ -775,6 +1538,15 @@ func UpdateCartStatus(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
+	// Also update related order status (non-transactional for simple transitions)
+	if err := config.DB.Transaction(func(tx *gorm.DB) error {
+		return updateRelatedOrderStatus(tx, cartObj.ID, target)
+	}); err != nil {
+		log.Printf("⚠️ Error actualizando orden relacionada: %v", err)
+		// Don't fail the request, just log the error
+	}
+	
 	c.JSON(http.StatusOK, cartObj)
 }
 
@@ -865,13 +1637,16 @@ func GetCartSummary(c *gin.Context) {
 		return
 	}
 
-	// Calcular cantidad total
+	// Calcular cantidad total (solo prendas confirmadas con stock)
 	totalQuantity := 0
 	for _, item := range cart.Items {
-		log.Printf("🔔 GetCartSummary - Item: cart_item_id=%d, product_id=%d, variant_id=%d, quantity=%d", item.ID, item.ProductID, item.VariantID, item.Quantity)
-		totalQuantity += item.Quantity
+		log.Printf("🔔 GetCartSummary - Item: cart_item_id=%d, product_id=%d, variant_id=%d, quantity=%d, stock_confirmed=%v", item.ID, item.ProductID, item.VariantID, item.Quantity, item.StockConfirmed)
+		// Solo contar items con stock confirmado
+		if item.StockConfirmed {
+			totalQuantity += item.Quantity
+		}
 	}
-	log.Printf("🔔 GetCartSummary - Total quantity calculated: %d", totalQuantity)
+	log.Printf("🔔 GetCartSummary - Total quantity calculated (confirmed only): %d", totalQuantity)
 
 	// Encontrar el tier aplicable
 	var applicableTier *struct {
@@ -893,7 +1668,7 @@ func GetCartSummary(c *gin.Context) {
 	for i := range tiers {
 		tier := &tiers[i]
 		if totalQuantity >= tier.MinQuantity {
-			if applicableTier == nil || tier.OrderIndex < applicableTier.OrderIndex {
+			if applicableTier == nil || tier.MinQuantity > applicableTier.MinQuantity {
 				applicableTier = tier
 			}
 		}
@@ -914,7 +1689,7 @@ func GetCartSummary(c *gin.Context) {
 		CartItemID  uint    `json:"cart_item_id"`
 		ProductID   uint    `json:"product_id"`
 		ProductName string  `json:"product_name"`
-		VariantID   uint    `json:"variant_id"`
+		VariantID   *uint   `json:"variant_id,omitempty"`
 		VariantName string  `json:"variant_name"`
 		Quantity    int     `json:"quantity"`
 		CostPrice   float64 `json:"cost_price"`
@@ -927,39 +1702,23 @@ func GetCartSummary(c *gin.Context) {
 	subtotal := 0.0
 
 	for _, item := range cart.Items {
-		var unitPrice float64
+		// Usar la misma lógica que syncCartItemsToOrder para consistencia
+		unitPrice := calculatePriceForTier(item.Product, totalQuantity)
 		costPrice := item.Product.CostPrice
 
-		if applicableTier != nil {
-			// Calcular precio según la fórmula del tier
-			switch applicableTier.FormulaType {
-			case "multiplier":
-				unitPrice = costPrice * applicableTier.Multiplier
-			case "percentage_markup":
-				unitPrice = costPrice + (costPrice * applicableTier.Percentage / 100.0)
-			case "flat_amount":
-				unitPrice = costPrice + applicableTier.FlatAmount
-			default:
-				unitPrice = costPrice
-			}
-		} else {
-			// Fallback al precio mayorista si existe
-			unitPrice = item.Product.WholesalePrice
-			if unitPrice == 0 {
-				unitPrice = costPrice * 2.0
-			}
+		itemSubtotal := unitPrice * float64(item.Quantity)
+		// Solo sumar al subtotal los items confirmados
+		if item.StockConfirmed {
+			subtotal += itemSubtotal
 		}
 
-		itemSubtotal := unitPrice * float64(item.Quantity)
-		subtotal += itemSubtotal
-
 		variantName := ""
-		if item.Variant.Color != "" || item.Variant.Size != "" {
+		if item.Variant != nil && (item.Variant.Color != "" || item.Variant.Size != "") {
 			variantName = item.Variant.Color + " / " + item.Variant.Size
 		}
 
 		imageURL := item.Product.ImageURL
-		if item.Variant.ImageURL != "" {
+		if item.Variant != nil && item.Variant.ImageURL != "" {
 			imageURL = item.Variant.ImageURL
 		}
 
@@ -1041,7 +1800,7 @@ func CheckCartStock(c *gin.Context) {
 		CartItemID      uint   `json:"cart_item_id"`
 		ProductID       uint   `json:"product_id"`
 		ProductName     string `json:"product_name"`
-		VariantID       uint   `json:"variant_id"`
+		VariantID       *uint  `json:"variant_id,omitempty"`
 		VariantName     string `json:"variant_name"`
 		RequestedQty    int    `json:"requested_qty"`
 		AvailableStock  int    `json:"available_stock"`
@@ -1054,24 +1813,30 @@ func CheckCartStock(c *gin.Context) {
 	allAvailable := true
 
 	for _, item := range cart.Items {
-		// Obtener stock total disponible para esta variante
-		var totalStock int
+		// IMPORTANTE: Ignorar items que están pendientes de verificación por la vendedora
+		// Esos items pueden ser confirmados desde otras ubicaciones
+		if item.RequiresStockCheck && !item.StockConfirmed {
+			continue
+		}
+
+		// Obtener stock disponible SOLO EN DEPÓSITO para esta variante
+		var depositoStock int
 		err := config.DB.Table("location_stocks").
-			Select("COALESCE(SUM(quantity), 0)").
-			Where("variant_id = ? AND deleted_at IS NULL", item.VariantID).
-			Scan(&totalStock).Error
+			Select("COALESCE(SUM(stock), 0)").
+			Where("variant_id = ? AND location = ? AND deleted_at IS NULL", item.VariantID, "deposito").
+			Scan(&depositoStock).Error
 
 		if err != nil {
 			continue
 		}
 
 		variantName := ""
-		if item.Variant.Color != "" || item.Variant.Size != "" {
+		if item.Variant != nil && (item.Variant.Color != "" || item.Variant.Size != "") {
 			variantName = item.Variant.Color + " / " + item.Variant.Size
 		}
 
 		imageURL := item.Product.ImageURL
-		if item.Variant.ImageURL != "" {
+		if item.Variant != nil && item.Variant.ImageURL != "" {
 			imageURL = item.Variant.ImageURL
 		}
 
@@ -1082,27 +1847,30 @@ func CheckCartStock(c *gin.Context) {
 			VariantID:      item.VariantID,
 			VariantName:    variantName,
 			RequestedQty:   item.Quantity,
-			AvailableStock: totalStock,
+			AvailableStock: depositoStock,
 			ImageURL:       imageURL,
 		}
 
 		// Determinar tipo de problema
-		if totalStock == 0 {
-			// Sin stock
+		if depositoStock == 0 {
+			// Sin stock en depósito
 			issue.IssueType = "out_of_stock"
 			issue.SuggestedAction = "Eliminar del carrito o buscar producto alternativo"
 			itemsWithIssues = append(itemsWithIssues, issue)
 			allAvailable = false
-		} else if totalStock < item.Quantity {
-			// Stock insuficiente
+		} else if depositoStock < item.Quantity {
+			// Stock insuficiente en depósito
 			issue.IssueType = "insufficient_stock"
-			issue.SuggestedAction = fmt.Sprintf("Reducir cantidad a %d unidades disponibles", totalStock)
+			issue.SuggestedAction = fmt.Sprintf("Reducir cantidad a %d unidades disponibles", depositoStock)
 			itemsWithIssues = append(itemsWithIssues, issue)
 			allAvailable = false
-		} else if totalStock < item.Quantity+3 {
-			// Stock limitado (advertencia preventiva)
+		} else if depositoStock <= 2 {
+			// Stock limitado (advertencia preventiva: 1 o 2 unidades)
 			issue.IssueType = "limited_stock"
-			issue.SuggestedAction = fmt.Sprintf("Stock limitado: solo quedan %d unidades", totalStock)
+			issue.SuggestedAction = fmt.Sprintf("Stock limitado: solo queda%s %d unidad%s", 
+				func() string { if depositoStock == 1 { return "" } else { return "n" } }(),
+				depositoStock,
+				func() string { if depositoStock == 1 { return "" } else { return "es" } }())
 			itemsWithIssues = append(itemsWithIssues, issue)
 			// No marcar como no disponible, solo es una advertencia
 		}
@@ -1199,12 +1967,72 @@ func CalculateGuestPrice(c *gin.Context) {
 	subtotal := unitPrice * float64(input.Quantity)
 
 	c.JSON(http.StatusOK, gin.H{
-		"product_id":                       prod.ID,
-		"product_name":                     prod.Name,
-		"quantity":                         input.Quantity,
-		"unit_price":                       unitPrice,
-		"subtotal":                         subtotal,
-		"message":                          "Precio base. Inicia sesión para acceder a precios por volumen",
-		"requires_login_for_better_prices": true,
+		"product_id":   prod.ID,
+		"product_name": prod.Name,
+		"quantity":     input.Quantity,
+		"unit_price":   unitPrice,
+		"subtotal":     subtotal,
 	})
+}
+
+// generarRemitosInternosParaCarrito genera remitos internos automáticamente cuando hay items en ubicaciones que no son deposito
+func generarRemitosInternosParaCarrito(tx *gorm.DB, cartID uint, items []CartItem) error {
+	// Agrupar items por ubicación (excluyendo "deposito")
+	itemsPorUbicacion := make(map[string][]CartItem)
+	
+	for _, item := range items {
+		// Solo generar remito para items que NO están en deposito
+		if item.Location != "" && item.Location != "deposito" && item.ReservedQuantity > 0 {
+			itemsPorUbicacion[item.Location] = append(itemsPorUbicacion[item.Location], item)
+		}
+	}
+	
+	// Si no hay items fuera de deposito, no generamos remitos
+	if len(itemsPorUbicacion) == 0 {
+		log.Printf("✅ No se requieren remitos internos - todos los items están en deposito")
+		return nil
+	}
+	
+	// Generar un remito por cada ubicación de origen
+	for ubicacion, itemsUbicacion := range itemsPorUbicacion {
+		// Generar número único
+		numero, err := remito.GenerarNumeroRemito()
+		if err != nil {
+			return fmt.Errorf("error al generar número de remito: %v", err)
+		}
+		
+		now := time.Now()
+		remitoInterno := remito.RemitoInterno{
+			Numero:           numero,
+			CartID:           &cartID,
+			UbicacionOrigen:  ubicacion,
+			UbicacionDestino: "deposito",
+			Estado:           "pendiente",
+			FechaEnvio:       &now,
+		}
+		
+		if err := tx.Create(&remitoInterno).Error; err != nil {
+			return fmt.Errorf("error al crear remito interno: %v", err)
+		}
+		
+		// Crear items del remito
+		for _, item := range itemsUbicacion {
+			remitoItem := remito.RemitoInternoItem{
+				RemitoInternoID: remitoInterno.ID,
+				CartItemID:      &item.ID,
+				ProductID:       item.ProductID,
+				VariantID:       item.VariantID,
+				Cantidad:        item.ReservedQuantity,
+			}
+			
+			if err := tx.Create(&remitoItem).Error; err != nil {
+				return fmt.Errorf("error al crear item de remito interno: %v", err)
+			}
+		}
+		
+		log.Printf("📦 Remito interno generado: %s (%s → deposito) con %d items", 
+			numero, ubicacion, len(itemsUbicacion))
+	}
+	
+	return nil
 }
