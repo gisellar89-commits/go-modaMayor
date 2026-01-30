@@ -509,7 +509,7 @@ export default function ConfigSeccionesHome() {
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">🗑️ Eliminar Sección</h2>
             <p className="text-gray-700 mb-6">
-              ¿Estás seguro de que deseas eliminar la sección <strong>"{selectedConfig.section_key}"</strong>?
+              ¿Estás seguro de que deseas eliminar la sección <strong>&quot;{selectedConfig.section_key}&quot;</strong>?
               Esta acción no se puede deshacer.
             </p>
 

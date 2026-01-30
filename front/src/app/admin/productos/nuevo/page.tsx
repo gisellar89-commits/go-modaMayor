@@ -1024,7 +1024,7 @@ export default function NuevoProductoPage() {
             })}
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            💡 Selecciona "Sin variante de color" si el producto no tiene variaciones de color, 
+            💡 Selecciona &quot;Sin variante de color&quot; si el producto no tiene variaciones de color, 
             o elige uno o más colores si tiene variantes.
           </p>
         </div>

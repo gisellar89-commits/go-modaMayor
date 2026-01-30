@@ -970,7 +970,7 @@ export default function EditarProductoPage() {
                   {variants.length === 0 && (
                     <tr>
                       <td colSpan={4} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
-                        No hay variantes. Haz clic en "Agregar Variante Manual" para crear una.
+                        No hay variantes. Haz clic en &quot;Agregar Variante Manual&quot; para crear una.
                       </td>
                     </tr>
                   )}
@@ -1429,7 +1429,7 @@ export default function EditarProductoPage() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
                 💡 <strong>Nota:</strong> Los cambios en el stock no se guardan automáticamente. 
-                Haz clic en el botón "Guardar Stocks" cuando termines de editar.
+                Haz clic en el botón &quot;Guardar Stocks&quot; cuando termines de editar.
               </p>
             </div>
           </div>

@@ -327,7 +327,7 @@ export default function HomeSectionsPage() {
           {getEntriesBySection(selectedSection).length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p className="text-lg mb-2">No hay productos en esta sección</p>
-              <p className="text-sm">Haz clic en "Agregar Producto" para comenzar</p>
+              <p className="text-sm">Haz clic en &quot;Agregar Producto&quot; para comenzar</p>
             </div>
           ) : (
             getEntriesBySection(selectedSection).map((entry, index) => {

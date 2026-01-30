@@ -1161,7 +1161,7 @@ export default function CartModal() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold mt-0.5">3.</span>
-                  <span>Podés ver el estado en <strong>"Mis pedidos"</strong></span>
+                  <span>Podés ver el estado en <strong>&quot;Mis pedidos&quot;</strong></span>
                 </li>
               </ul>
             </div>

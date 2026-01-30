@@ -476,7 +476,7 @@ export default function ReportesVentasPage() {
           </svg>
           <p className="text-gray-600 mb-2">No hay datos para mostrar</p>
           <p className="text-sm text-gray-500">
-            Selecciona un rango de fechas y haz clic en "Generar Reporte"
+            Selecciona un rango de fechas y haz clic en &quot;Generar Reporte&quot;
           </p>
         </div>
       )}

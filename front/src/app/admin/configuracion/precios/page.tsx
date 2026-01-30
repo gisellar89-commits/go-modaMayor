@@ -22,7 +22,8 @@ interface PriceTier {
 }
 
 export default function PreciosConfigPage() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
   const router = useRouter();
   const [tiers, setTiers] = useState<PriceTier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,16 +346,16 @@ export default function PreciosConfigPage() {
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Los niveles se evalúan por <strong>orden</strong> (menor = mayor prioridad)</li>
             <li>• Se aplica el primer nivel que cumpla la cantidad mínima según el orden</li>
-            <li>• El nivel marcado como "Por defecto" se usa cuando ningún otro aplica</li>
+            <li>• El nivel marcado como &quot;Por defecto&quot; se usa cuando ningún otro aplica</li>
             <li>• Los cambios afectan a nuevos productos y pedidos automáticamente</li>
           </ul>
         </div>
 
         <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <h3 className="font-semibold text-yellow-900 mb-2">🔄 Aplicar a Productos Existentes</h3>
-          <p className="text-sm text-yellow-800">
+            <p className="text-sm text-yellow-800">
             Para actualizar los precios de productos que ya existen en el sistema, usa el botón 
-            <strong> "Aplicar a Productos Existentes"</strong>. Esto recalculará los precios mayorista, 
+            <strong> &quot;Aplicar a Productos Existentes&quot;</strong>. Esto recalculará los precios mayorista, 
             descuento 1 y descuento 2 de todos los productos basándose en su costo y los niveles actuales.
           </p>
         </div>

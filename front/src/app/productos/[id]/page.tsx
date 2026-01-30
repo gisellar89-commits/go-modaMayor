@@ -524,17 +524,17 @@ export default function DetalleProductoPage() {
                   <div className="flex gap-3 mt-2 items-center flex-wrap">
                     {coloresDisponibles.map(({ color, habilitado }) => {
                       const isSelected = selectedColor === color;
-                      const sw = resolveSwatchColor(color);
+                      const sw = resolveSwatchColor(color as string);
                       const isHex = typeof sw === 'string' && sw.startsWith('#');
                       const textColor = isHex && sw.toLowerCase() === '#ffffff' ? '#000' : '#fff';
                       console.log('DEBUG - Color:', color, 'habilitado:', habilitado, 'swatch:', sw);
                       return (
-                        <div key={color} className="relative">
+                        <div key={String(color)} className="relative">
                           <button
-                            title={color}
+                            title={String(color)}
                             onClick={() => {
                               console.log('Click en color:', color);
-                              setSelectedColor(color);
+                              setSelectedColor(String(color));
                             }}
                             className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${
                               isSelected 
@@ -544,7 +544,7 @@ export default function DetalleProductoPage() {
                             style={{ background: sw ?? undefined, color: textColor }}
                           >
                             {/* If we couldn't resolve to a CSS color, show the name */}
-                            {!sw && <span className="text-xs font-semibold">{color}</span>}
+                              {!sw && <span className="text-xs font-semibold">{String(color)}</span>}
                           </button>
                           {!habilitado && (
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] px-1 py-0.5 rounded-full font-bold">✕</span>

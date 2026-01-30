@@ -33,7 +33,7 @@ export default function useCartTierNotifications() {
       });
       
       const tierName = summary.tier?.display_name || "Nuevo nivel";
-      const savings = summary.tier?.discount_percentage ? `${summary.tier.discount_percentage}%` : "";
+      const savings = summary.tier?.percentage ? `${summary.tier.percentage}%` : "";
       
       if (typeof window !== "undefined" && (window as any).showPriceNotification) {
         (window as any).showPriceNotification({

@@ -136,11 +136,11 @@ async function parseResponseError(res: Response) {
   try {
     const body = await res.json();
     if (body && (body.message || body.error)) return String(body.message ?? body.error);
-  } catch (_) {
+  } catch {
     try {
       const text = await res.text();
       if (text) return text;
-    } catch (_) {}
+    } catch {}
   }
   return res.statusText || `HTTP ${res.status}`;
 }
@@ -174,7 +174,7 @@ export async function fetchProductsPaged(options?: { search?: string; page?: num
     // Fallback: try fetchProducts
     const items = await fetchProducts(token);
     return { items, total: items.length };
-  } catch (err) {
+  } catch {
     // Fallback to full fetch
     const items = await fetchProducts(token);
     return { items, total: items.length };

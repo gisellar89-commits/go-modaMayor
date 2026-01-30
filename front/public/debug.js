@@ -1,1 +1,3 @@
-window.products = JSON.stringify(require("./front/src/app/productos/ProductosClient.tsx").default);
+import("../src/app/productos/ProductosClient.tsx").then(module => {
+	window.products = JSON.stringify(module.default);
+});

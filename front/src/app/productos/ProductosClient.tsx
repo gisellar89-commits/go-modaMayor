@@ -1,4 +1,10 @@
 "use client";
+// Extiende la interfaz Window para incluir 'products' para depuración
+declare global {
+  interface Window {
+    products?: any;
+  }
+}
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "../../components/ProductCard";

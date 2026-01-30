@@ -51,7 +51,6 @@ export default function RootLayout({
           <WhatsAppButton />
           <PriceNotification />
         </AuthProvider>
-      <script src="/debugProducts.js"></script>
       </body>
     </html>
   );

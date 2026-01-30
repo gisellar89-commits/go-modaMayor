@@ -8,34 +8,41 @@ import Modal from "../../../components/Modal";
 import RemitosCarrito from "../../../components/RemitosCarrito";
 
 export default function VendedoraCartsPage() {
-  const [carts, setCarts] = useState<any[]>([]);
+  type Cart = { id: number; items: CartItem[]; estado: string; [key: string]: any };
+  type CartItem = { id: number; product_id: number; quantity: number; [key: string]: any };
+  type Product = { id: number; name: string; [key: string]: any };
+  type Variant = { id: number; name: string; [key: string]: any };
+  type PriceTier = { id: number; name: string; active: boolean; order_index: number; min_quantity: number; is_default?: boolean; formula_type?: string; multiplier?: number; percentage?: number; flat_amount?: number; [key: string]: any };
+
+  const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
-  const [variants, setVariants] = useState<any[]>([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [addQty, setAddQty] = useState<number>(1);
-  const [variantStocksMap, setVariantStocksMap] = useState<Record<number, any[]>>({});
+  const [variantStocksMap, setVariantStocksMap] = useState<Record<number, Variant[]>>({});
   const [selectedLocationMap, setSelectedLocationMap] = useState<Record<number, string>>({});
   const [selectedVariantMap, setSelectedVariantMap] = useState<Record<number, number>>({});
   const [expandedCart, setExpandedCart] = useState<number | null>(null);
   const [viewModeMap, setViewModeMap] = useState<Record<number, 'vendedora' | 'cliente'>>({});
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [priceTiers, setPriceTiers] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
   const [previousTierName, setPreviousTierName] = useState<string | null>(null);
   const [tierJustChanged, setTierJustChanged] = useState<boolean>(false);
   // Estado para advertencias visuales de stock confirmado
   const [confirmedStockAlerts, setConfirmedStockAlerts] = useState<Record<string, { available: number, location: string }>>({});
   
   // Estados para manejo de items pendientes de confirmación
-  const [pendingItemLocations, setPendingItemLocations] = useState<Record<string, any[]>>({});
+  const [pendingItemLocations, setPendingItemLocations] = useState<Record<string, Variant[]>>({});
   const [showingLocations, setShowingLocations] = useState<Record<string, boolean>>({});
   const [selectedPendingLocations, setSelectedPendingLocations] = useState<Record<string, string>>({});
   
   // Estados para edición de dirección
-  const [editingAddress, setEditingAddress] = useState<any>(null);
+  type Address = { id: number; recipient_name: string; recipient_phone: string; street: string; floor?: string; city: string; state: string; postal_code: string; country: string; reference?: string; label?: string; };
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [addressForm, setAddressForm] = useState({
     recipient_name: '',
@@ -136,7 +143,7 @@ export default function VendedoraCartsPage() {
     
     const activeTiers = tiersArray.filter((t: any) => t.active).sort((a: any, b: any) => a.order_index - b.order_index);
     
-    let applicableTier = activeTiers.find((t: any) => totalQuantity >= t.min_quantity) || activeTiers.find((t: any) => t.is_default);
+    const applicableTier = activeTiers.find((t: any) => totalQuantity >= t.min_quantity) || activeTiers.find((t: any) => t.is_default);
     
     if (!applicableTier) return costPrice * 2.5; // fallback a mayorista
     
@@ -1205,7 +1212,7 @@ export default function VendedoraCartsPage() {
                               ⚠️ Este carrito no se puede editar en estado: <strong>{cart.estado}</strong>
                             </div>
                             <div className="text-sm text-orange-700">
-                              Usa el botón "Habilitar edición" arriba para cambiar el estado a pendiente
+                              Usa el botón &quot;Habilitar edición&quot; arriba para cambiar el estado a pendiente
                             </div>
                           </div>
                         ) : (

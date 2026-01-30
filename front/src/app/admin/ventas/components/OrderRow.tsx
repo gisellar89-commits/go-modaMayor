@@ -67,8 +67,8 @@ export default function OrderRow({ order, statuses, onChangeStatus, onOpen, onRe
       <td className="px-2 py-1 border">{order.User?.name ?? order.User?.email ?? `#${order.user_id}`}</td>
       <td className="px-2 py-1 border">{order.AssignedToUser?.name ?? order.AssignedToUser?.email ?? (order.assigned_to && order.assigned_to > 0 ? `#${order.assigned_to}` : '—')}</td>
       <td className="px-2 py-1 border">
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-          {formatStatus(order.status)}
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status || "")}`}>
+          {formatStatus(order.status || "")}
         </span>
       </td>
       <td className="px-2 py-1 border">${(order.total ?? 0).toFixed(2)}</td>

@@ -104,11 +104,12 @@ export default function UsersAdmin() {
       setNewUser({
         name: "",
         email: "",
+        phone: "",
         password: "",
         role: "vendedor",
         active: true,
         working_from: "",
-        working_to: ""
+        working_to: "",
       });
       fetchUsers();
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -498,7 +499,7 @@ export default function UsersAdmin() {
                   <option value="admin">Admin</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Los clientes se registran a través del formulario de "Crear cuenta"
+                  Los clientes se registran a través del formulario de &quot;Crear cuenta&quot;
                 </p>
               </div>
               

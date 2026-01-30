@@ -50,7 +50,13 @@ export default function VendedoraHistorialPage() {
     const statusMap: Record<string, string> = {
       completado: "🎉 Completado",
       cancelado: "❌ Cancelado",
+      pagado: "💸 Pagado",
+      enviado: "📦 Enviado",
     };
-    return null;
-  }
+    return statusMap[status?.toLowerCase()] || status;
+  };
+
+  // ...rest of component (render, etc.)
+  return null;
+}
 

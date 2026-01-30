@@ -226,7 +226,7 @@ export default function RemitosInternosPage() {
                   </div>
                 </div>
 
-                {!mostrarHistoricos && remito.estado === "pendiente" && (
+                {remito.estado === "pendiente" && (
                   <button
                     onClick={() => openConfirmModal(remito)}
                     disabled={confirmingId === remito.id}
