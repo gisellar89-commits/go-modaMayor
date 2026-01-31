@@ -213,7 +213,7 @@ GET    /settings/price-tiers/calculate?cost_price=X&quantity=Y  # Calcular preci
 1. **Aplicar migración**
    ```bash
    cd cmd
-   go run apply_migrations.go
+   go run cmd/apply_migration/main.go
    ```
 
 2. **Reiniciar backend**

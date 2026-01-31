@@ -34,3 +34,4 @@ func main() {
 	fmt.Printf("Migration aplicada ok. Statements ejecutados: %d\n", len(parts))
 	fmt.Printf("RowsAffected sum: %d\n", applied)
 }
+
