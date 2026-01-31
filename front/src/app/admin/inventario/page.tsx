@@ -1,5 +1,5 @@
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 "use client";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../../../contexts/AuthContext";

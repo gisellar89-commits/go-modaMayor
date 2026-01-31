@@ -1,5 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
+
+// Declaración global de API_URL para todo el componente
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 import { useAuth } from "../../../contexts/AuthContext";
 import { fetchProducts, Product, LocationStock } from "../../../utils/api";
 
