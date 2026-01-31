@@ -4,6 +4,7 @@ import Image from "next/image";
 import { fetchCategories, Category, Subcategory } from "../../../utils/api";
 
 export default function SubcategoryAdmin() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [successList, setSuccessList] = useState<string | null>(null);
   const [errorList, setErrorList] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function SubcategoryAdmin() {
     }
     
     const token = localStorage.getItem("token") ?? undefined;
-    fetch(`http://localhost:8080/categories/${categoryId}/subcategories`, {
+    fetch(`${API_URL}/categories/${categoryId}/subcategories`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     })
       .then(res => res.json())
@@ -44,7 +45,7 @@ export default function SubcategoryAdmin() {
     setSuccessList(null);
     try {
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/subcategories/${id}`, {
+      const res = await fetch(`${API_URL}/subcategories/${id}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -76,7 +77,7 @@ export default function SubcategoryAdmin() {
     setSuccessList(null);
     try {
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/subcategories/${editingSubcategory.id || editingSubcategory.ID}`, {
+      const res = await fetch(`${API_URL}/subcategories/${editingSubcategory.id || editingSubcategory.ID}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

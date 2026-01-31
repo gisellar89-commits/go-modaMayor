@@ -14,6 +14,7 @@ interface DashboardStats {
 }
 
 export default function AdminPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const auth = useAuth();
   const role = auth?.user?.role;
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -31,7 +32,7 @@ export default function AdminPage() {
       // Si es vendedor, solo cargar sus órdenes asignadas
       if (role === "vendedor") {
         try {
-          const ordersRes = await fetch(`http://localhost:8080/orders?vendedor_id=${auth?.user?.id || 0}&limit=10`, {
+          const ordersRes = await fetch(`${API_URL}/orders?vendedor_id=${auth?.user?.id || 0}&limit=10`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (ordersRes.ok) {
@@ -55,7 +56,7 @@ export default function AdminPage() {
       }
       
       // Cargar productos para estadísticas básicas (admin/encargado)
-      const productsRes = await fetch("http://localhost:8080/products?limit=1000", {
+      const productsRes = await fetch(`${API_URL}/products?limit=1000`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
@@ -67,7 +68,7 @@ export default function AdminPage() {
       let stocksRes;
       let allStocks = [];
       try {
-        stocksRes = await fetch("http://localhost:8080/location-stocks", {
+        stocksRes = await fetch(`${API_URL}/location-stocks`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (stocksRes.ok) {
@@ -97,7 +98,7 @@ export default function AdminPage() {
       // Cargar órdenes si existen
       let orders = [];
       try {
-        const ordersRes = await fetch("http://localhost:8080/orders?limit=5", {
+        const ordersRes = await fetch(`${API_URL}/orders?limit=5`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         console.log('📦 Orders response status:', ordersRes.status);
@@ -117,7 +118,7 @@ export default function AdminPage() {
       // Cargar productos más vendidos desde el endpoint de reportes
       let topProducts = [];
       try {
-        const topRes = await fetch("http://localhost:8080/reports/top-products?limit=5", {
+        const topRes = await fetch(`${API_URL}/reports/top-products?limit=5`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (topRes.ok) {

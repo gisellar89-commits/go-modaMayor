@@ -56,10 +56,11 @@ export default function RemitosInternosPage() {
   // Eliminada dependencia a mostrarHistoricos
   // Función de históricos eliminada porque ya no se usa
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const fetchRemitosPendientes = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8080/remitos-internos/pendientes", {
+      const response = await fetch(`${API_URL}/remitos-internos/pendientes`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -85,7 +86,7 @@ export default function RemitosInternosPage() {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8080/remitos-internos/${selectedRemito.id}/confirmar`,
+        `${API_URL}/remitos-internos/${selectedRemito.id}/confirmar`,
         {
           method: "POST",
           headers: {
@@ -251,7 +252,7 @@ export default function RemitosInternosPage() {
                       {/* Imagen del producto */}
                       {item.product?.image_url ? (
                         <img
-                          src={`http://localhost:8080${item.product.image_url}`}
+                          src={`${API_URL}${item.product.image_url}`}
                           alt={item.product.name || "Producto"}
                           className="w-16 h-16 object-cover rounded border border-gray-200"
                           onError={(e) => {

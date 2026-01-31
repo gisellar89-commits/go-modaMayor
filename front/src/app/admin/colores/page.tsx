@@ -11,6 +11,7 @@ interface Color {
 }
 
 export default function ColoresPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const auth = useAuth();
   const [colors, setColors] = useState<Color[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,7 @@ export default function ColoresPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/colors", {
+      const res = await fetch(`${API_URL}/colors`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error("Error cargando colores");
@@ -46,7 +47,7 @@ export default function ColoresPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/colors", {
+      const res = await fetch(`${API_URL}/colors`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,7 +70,7 @@ export default function ColoresPage() {
     if (!editing) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/colors/${editing.ID}`, {
+      const res = await fetch(`${API_URL}/colors/${editing.ID}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +93,7 @@ export default function ColoresPage() {
     if (!confirm("¿Estás seguro de eliminar este color?")) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/colors/${id}`, {
+      const res = await fetch(`${API_URL}/colors/${id}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });

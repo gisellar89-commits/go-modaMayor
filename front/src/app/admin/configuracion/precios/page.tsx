@@ -65,7 +65,7 @@ export default function PreciosConfigPage() {
   const loadTiers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8080/settings/price-tiers?include_inactive=true', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers?include_inactive=true`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -83,8 +83,8 @@ export default function PreciosConfigPage() {
     try {
       const token = localStorage.getItem('token');
       const url = editingTier
-        ? `http://localhost:8080/settings/price-tiers/${editingTier.ID}`
-        : 'http://localhost:8080/settings/price-tiers';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers/${editingTier.ID}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers`;
       
       const method = editingTier ? 'PUT' : 'POST';
       
@@ -118,7 +118,7 @@ export default function PreciosConfigPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:8080/settings/price-tiers/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -171,7 +171,7 @@ export default function PreciosConfigPage() {
     setRecalculating(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8080/settings/price-tiers/recalculate-products', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers/recalculate-products`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

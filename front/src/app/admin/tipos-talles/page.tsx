@@ -44,7 +44,7 @@ export default function TiposTallesPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/size-types", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-types`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (!res.ok) throw new Error("Error cargando tipos de talles");
@@ -61,7 +61,7 @@ export default function TiposTallesPage() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/size-types", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-types`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +84,7 @@ export default function TiposTallesPage() {
     if (!editingType) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/size-types/${editingType.ID}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-types/${editingType.ID}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -107,7 +107,7 @@ export default function TiposTallesPage() {
     if (!confirm("¿Estás seguro de eliminar este tipo de talle?")) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/size-types/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-types/${id}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
@@ -124,7 +124,7 @@ export default function TiposTallesPage() {
     if (!selectedTypeId) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/size-values", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-values`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +147,7 @@ export default function TiposTallesPage() {
     if (!editingValue || !selectedTypeId) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/size-values/${editingValue.ID}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-values/${editingValue.ID}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -170,7 +170,7 @@ export default function TiposTallesPage() {
     if (!confirm("¿Estás seguro de eliminar este valor?")) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/size-values/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/size-values/${id}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });

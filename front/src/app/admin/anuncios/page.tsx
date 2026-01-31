@@ -8,7 +8,8 @@ export default function AnunciosAdminPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8080/ads", {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    fetch(`${API_URL}/ads`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     })
       .then(res => {

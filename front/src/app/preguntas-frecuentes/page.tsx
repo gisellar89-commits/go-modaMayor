@@ -39,7 +39,8 @@ export default function FAQsPublicPage() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:8080/faqs");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const res = await fetch(`${API_URL}/faqs`);
       if (!res.ok) throw new Error("Error al cargar las FAQs");
       const data = await res.json();
       setFaqs(data || []);

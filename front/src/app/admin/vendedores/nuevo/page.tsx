@@ -20,7 +20,8 @@ export default function NuevoVendedorPage() {
     setSuccess(null);
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/users", {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const res = await fetch(`${API_URL}/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

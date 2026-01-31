@@ -3,12 +3,13 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function RankingVentasPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [ranking, setRanking] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8080/reports/sales-ranking", {
+    fetch(`${API_URL}/reports/sales-ranking`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     })
       .then(res => {

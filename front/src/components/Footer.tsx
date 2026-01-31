@@ -10,7 +10,8 @@ export default function Footer() {
 
   useEffect(() => {
     // Cargar categorías principales
-    fetch('http://localhost:8080/public/categories')
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    fetch(`${API_URL}/public/categories`)
       .then(res => res.ok ? res.json() : [])
       .then(cats => setCategories(Array.isArray(cats) ? cats.slice(0, 6) : []))
       .catch(err => console.error('Error loading categories:', err));

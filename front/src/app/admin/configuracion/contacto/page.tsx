@@ -15,6 +15,7 @@ interface ContactSettings {
 }
 
 export default function ConfiguracionContactoPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [settings, setSettings] = useState<ContactSettings>({
     id: 0,
     whatsapp_number: "",
@@ -36,7 +37,7 @@ export default function ConfiguracionContactoPage() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch("http://localhost:8080/settings/contact");
+      const res = await fetch(`${API_URL}/settings/contact`);
       const data = await res.json();
       setSettings(data);
     } catch (error) {
@@ -59,7 +60,7 @@ export default function ConfiguracionContactoPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/settings/contact", {
+      const res = await fetch(`${API_URL}/settings/contact`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

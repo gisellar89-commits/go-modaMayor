@@ -40,8 +40,9 @@ export default function RemitosCarrito({ cartId }: RemitosCarritoProps) {
   const fetchRemitos = async () => {
     try {
       const token = localStorage.getItem("token");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
       const response = await fetch(
-        `http://localhost:8080/carts/${cartId}/remitos-internos`,
+        `${API_URL}/carts/${cartId}/remitos-internos`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

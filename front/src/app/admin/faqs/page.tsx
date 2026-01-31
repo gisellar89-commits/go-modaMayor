@@ -16,6 +16,7 @@ interface FAQ {
 }
 
 export default function FAQsPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const router = useRouter();
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +38,7 @@ export default function FAQsPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:8080/admin/faqs", {
+      const res = await fetch(`${API_URL}/admin/faqs`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -86,8 +87,8 @@ export default function FAQsPage() {
     try {
       const id = editingFAQ.id || editingFAQ.ID;
       const url = id
-        ? `http://localhost:8080/admin/faqs/${id}`
-        : "http://localhost:8080/admin/faqs";
+        ? `${API_URL}/admin/faqs/${id}`
+        : `${API_URL}/admin/faqs`;
       const method = id ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -120,7 +121,7 @@ export default function FAQsPage() {
 
     try {
       const id = faq.id || faq.ID;
-      const res = await fetch(`http://localhost:8080/admin/faqs/${id}`, {
+      const res = await fetch(`${API_URL}/admin/faqs/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,7 +163,7 @@ export default function FAQsPage() {
     };
 
     try {
-      const res = await fetch("http://localhost:8080/admin/faqs/reorder", {
+      const res = await fetch(`${API_URL}/admin/faqs/reorder`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

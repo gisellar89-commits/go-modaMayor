@@ -15,7 +15,8 @@ export default function StockAdminPage() {
       if (!product || !stock || stock.stock === newValue) continue;
       try {
   const token = localStorage.getItem("token") ?? undefined;
-        const res = await fetch(`http://localhost:8080/location_stock/${stockId}`, {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        const res = await fetch(`${API_URL}/location_stock/${stockId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -173,7 +174,7 @@ export default function StockAdminPage() {
                                           setFeedback(fb => ({ ...fb, [stock.id]: "" }));
                                           try {
                                             const token = localStorage.getItem("token") ?? undefined;
-                                            const res = await fetch(`http://localhost:8080/location_stock/${stock.id}`, {
+                                            const res = await fetch(`${API_URL}/location_stock/${stock.id}`, {
                                               method: "PUT",
                                               headers: {
                                                 "Content-Type": "application/json",

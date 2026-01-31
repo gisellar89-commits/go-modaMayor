@@ -23,7 +23,7 @@ export default function CategoriasAdmin() {
     }
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/categories/${editId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/${editId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -51,7 +51,7 @@ export default function CategoriasAdmin() {
     setSuccess(null);
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/categories/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/${id}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -72,11 +72,11 @@ export default function CategoriasAdmin() {
 
   useEffect(() => {
     const _token = localStorage.getItem("token") ?? undefined;
-    fetch("http://localhost:8080/categories", {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
       headers: _token ? { Authorization: `Bearer ${_token}` } : {}
     })
       .then(res => res.json())
-      .then(setCategories);
+      .then(data => setCategories(Array.isArray(data) ? data : []));
   }, [success]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,7 +89,7 @@ export default function CategoriasAdmin() {
     }
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/categories", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

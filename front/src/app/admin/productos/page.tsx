@@ -165,7 +165,8 @@ export default function AdminProductosPage() {
   useEffect(() => {
     if (form.category_id) {
         const _token = localStorage.getItem("token") ?? undefined;
-        fetch(`http://localhost:8080/categories/${form.category_id}/subcategories`, {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+        fetch(`${API_URL}/categories/${form.category_id}/subcategories`, {
         headers: _token ? { Authorization: `Bearer ${_token}` } : {}
       })
         .then(res => res.json())
@@ -206,7 +207,7 @@ export default function AdminProductosPage() {
       delete body.talleInput;
       delete body.colorInput;
       if (form.id) {
-        res = await fetch(`http://localhost:8080/products/${form.id}`, {
+        res = await fetch(`${API_URL}/products/${form.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -225,7 +226,7 @@ export default function AdminProductosPage() {
         // Eliminar variantes que ya no están
         for (const orig of originalVariants) {
           if (!currentVariants.find(v => (v.ID || v.id) === (orig.ID || orig.id))) {
-            await fetch(`http://localhost:8080/variants/${orig.ID || orig.id}`, {
+            await fetch(`${API_URL}/variants/${orig.ID || orig.id}`, {
               method: "DELETE",
               headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
             });
@@ -234,7 +235,7 @@ export default function AdminProductosPage() {
         // Crear variantes nuevas (sin ID)
         for (const v of currentVariants) {
           if (!v.ID && !v.id) {
-            await fetch(`http://localhost:8080/products/${form.id}/variants`, {
+            await fetch(`${API_URL}/products/${form.id}/variants`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -248,7 +249,7 @@ export default function AdminProductosPage() {
         for (const v of currentVariants) {
           const orig = originalVariants.find(o => (o.ID || o.id) === (v.ID || v.id));
           if (orig && (orig.size !== v.size || orig.color !== v.color || orig.sku !== v.sku)) {
-            await fetch(`http://localhost:8080/variants/${v.ID || v.id}`, {
+            await fetch(`${API_URL}/variants/${v.ID || v.id}`, {
               method: "PUT",
               headers: {
                 "Content-Type": "application/json",
@@ -264,7 +265,7 @@ export default function AdminProductosPage() {
         const prodList = await fetchProducts(token);
         setProducts(Array.isArray(prodList) ? prodList : []);
       } else {
-        res = await fetch("http://localhost:8080/products", {
+        res = await fetch(`${API_URL}/products`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -317,7 +318,7 @@ export default function AdminProductosPage() {
                 delete (payload as any).__file;
                 delete (payload as any).image_file;
                 delete (payload as any).file;
-                let resp = await fetch(`http://localhost:8080/products/${createdId}/variants`, {
+                let resp = await fetch(`${API_URL}/products/${createdId}/variants`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -351,7 +352,7 @@ export default function AdminProductosPage() {
                       try {
                         const newSku = `${originalSku}-${attempt}`;
                         payload.sku = newSku;
-                        resp = await fetch(`http://localhost:8080/products/${createdId}/variants`, {
+                        resp = await fetch(`${API_URL}/products/${createdId}/variants`, {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json",
@@ -397,7 +398,7 @@ export default function AdminProductosPage() {
                   try {
                     const fd = new FormData();
                     fd.append('image', maybeFile);
-                    const up = await fetch(`http://localhost:8080/variants/${createdVariant.ID || createdVariant.id}/image`, {
+                    const up = await fetch(`${API_URL}/variants/${createdVariant.ID || createdVariant.id}/image`, {
                       method: 'POST',
                       headers: {
                         ...(token ? { Authorization: `Bearer ${token}` } : {})

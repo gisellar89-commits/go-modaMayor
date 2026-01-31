@@ -105,8 +105,9 @@ export function calculatePriceForQuantity(
  * Obtiene todos los price tiers desde el backend
  */
 export async function fetchPriceTiers(): Promise<PriceTier[]> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   try {
-    const res = await fetch('http://localhost:8080/settings/price-tiers');
+    const res = await fetch(`${API_URL}/settings/price-tiers`);
     const data = await res.json();
     return data.tiers || [];
   } catch (error) {
@@ -122,9 +123,10 @@ export async function calculatePricesFromBackend(
   costPrice: number,
   quantity: number
 ): Promise<CalculatedPriceInfo | null> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   try {
     const res = await fetch(
-      `http://localhost:8080/settings/price-tiers/calculate?cost_price=${costPrice}&quantity=${quantity}`
+      `${API_URL}/settings/price-tiers/calculate?cost_price=${costPrice}&quantity=${quantity}`
     );
     const data = await res.json();
     

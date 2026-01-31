@@ -16,7 +16,8 @@ export default function WhatsAppButton() {
 
   useEffect(() => {
     // Cargar configuración desde la API
-    fetch("http://localhost:8080/settings/contact")
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    fetch(`${API_URL}/settings/contact`)
       .then(res => res.json())
       .then(data => {
         if (data.whatsapp_number) {

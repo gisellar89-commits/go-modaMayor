@@ -15,6 +15,7 @@ interface User {
 }
 
 export default function UsersAdmin() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function UsersAdmin() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/users", {
+      const res = await fetch(`${API_URL}/users`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         }
@@ -85,7 +86,7 @@ export default function UsersAdmin() {
     
     try {
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/users", {
+      const res = await fetch(`${API_URL}/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

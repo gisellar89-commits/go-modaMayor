@@ -49,6 +49,7 @@ export default function ConfigSeccionesHome() {
     loadConfigs();
   }, []);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const loadConfigs = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -57,7 +58,7 @@ export default function ConfigSeccionesHome() {
         return;
       }
 
-      const res = await fetch('http://localhost:8080/settings/home_section_configs', {
+      const res = await fetch(`${API_URL}/settings/home_section_configs`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -132,7 +133,7 @@ export default function ConfigSeccionesHome() {
         return;
       }
 
-      const res = await fetch('http://localhost:8080/settings/home_section_configs', {
+      const res = await fetch(`${API_URL}/settings/home_section_configs`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -173,7 +174,7 @@ export default function ConfigSeccionesHome() {
         return;
       }
 
-      const res = await fetch(`http://localhost:8080/settings/home_section_configs/${selectedConfig.id}`, {
+      const res = await fetch(`${API_URL}/settings/home_section_configs/${selectedConfig.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -202,7 +203,7 @@ export default function ConfigSeccionesHome() {
       }
 
       const promises = configs.map(config =>
-        fetch(`http://localhost:8080/settings/home_section_configs/${config.id}`, {
+        fetch(`${API_URL}/settings/home_section_configs/${config.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

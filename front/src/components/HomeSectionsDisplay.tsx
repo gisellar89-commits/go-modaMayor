@@ -78,7 +78,8 @@ export default function HomeSectionsDisplay() {
   const loadSections = async () => {
     try {
       // mode=both: combina entradas manuales + automáticas basadas en tags
-      const res = await fetch("http://localhost:8080/public/home_sections?mode=both&limit=12");
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+      const res = await fetch(`${API_URL}/public/home_sections?mode=both&limit=12`);
       if (res.ok) {
         const data = await res.json();
         setSections(data);
@@ -103,9 +104,10 @@ export default function HomeSectionsDisplay() {
   }
 
   const renderProductCard = (product: Product) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
     const imageUrl = product.image_url
       ? product.image_url.startsWith("/")
-        ? `http://localhost:8080${product.image_url}`
+        ? `${API_URL}${product.image_url}`
         : product.image_url
       : null;
 

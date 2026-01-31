@@ -4,6 +4,7 @@ import { fetchCategories, Category, Subcategory } from "../../../../utils/api";
 import { useRouter } from "next/navigation";
 
 export default function NuevoProductoPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number | ''>('');
@@ -229,7 +230,7 @@ export default function NuevoProductoPage() {
         formData.append(fieldNames[index], file);
       });
 
-      const res = await fetch(`http://localhost:8080/products/${productId}/images` || "http://localhost:8080", {
+      const res = await fetch(`${API_URL}/products/${productId}/images`, {
         method: "POST",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -274,7 +275,7 @@ export default function NuevoProductoPage() {
       .then(setCategories)
       .catch((e) => console.error("No se pudieron cargar categorías", e));
     // cargar size types (admin endpoint)
-    fetch('http://localhost:8080/size-types', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+    fetch(`${API_URL}/size-types`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       .then(r=>r.ok? r.json(): Promise.reject(r))
       .then((data:any[])=>{
         console.log('DEBUG sizeTypes loaded from server:', data);
@@ -293,7 +294,7 @@ export default function NuevoProductoPage() {
       { id: 4, key: 'azul', name: 'Azul', hex: '#0000FF' },
       { id: 5, key: 'verde', name: 'Verde', hex: '#00AA00' },
     ]
-    fetch('http://localhost:8080/public/colors')
+    fetch(`${API_URL}/public/colors`)
       .then(r=>r.ok? r.json(): Promise.reject(r))
       .then((data:any[])=>{
         if (!data || data.length === 0) setColors(fallbackColors)
@@ -301,14 +302,14 @@ export default function NuevoProductoPage() {
       })
       .catch(()=> setColors(fallbackColors))
     // cargar temporadas
-    fetch('http://localhost:8080/public/seasons')
+    fetch(`${API_URL}/public/seasons`)
       .then(r=>r.ok? r.json(): Promise.reject(r))
       .then((data:any[])=>{
         setSeasons(data || [])
       })
       .catch(()=> setSeasons([]))
     // cargar proveedores
-    fetch('http://localhost:8080/suppliers', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+    fetch(`${API_URL}/suppliers`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       .then(r=>r.ok? r.json(): Promise.reject(r))
       .then((data:any[])=>{
         setSuppliers(data || [])
@@ -333,7 +334,7 @@ export default function NuevoProductoPage() {
     }
     
     // Fetch size values from database
-    fetch(`http://localhost:8080/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+    fetch(`${API_URL}/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
       .then(r => r.ok ? r.json() : Promise.reject(r))
       .then((all: any[]) => {
         console.log('DEBUG availableSizes - Fetched from server:', all);
@@ -351,7 +352,7 @@ export default function NuevoProductoPage() {
     // Cargar subcategorías cuando cambia la categoría
     if (categoryId) {
       // Use public endpoint for subcategories to allow non-admin users to see them in the wizard
-      fetch(`http://localhost:8080/public/categories/${categoryId}/subcategories`)
+      fetch(`${API_URL}/public/categories/${categoryId}/subcategories`)
         .then((res) => res.ok ? res.json() : Promise.reject(res))
         .then((data)=>{
           // API may return either an array or a paged-like object { value: [...], Count: n }
@@ -375,7 +376,7 @@ export default function NuevoProductoPage() {
     setSuccess(null);
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/products", {
+      const res = await fetch(`${API_URL}/products`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -516,7 +517,7 @@ export default function NuevoProductoPage() {
             // try to resolve selectedSizeType to a numeric id if server-provided
             const resolved = sizeTypes.find((st:any)=> (st.id && String(st.id) === selectedSizeType) || st.key === selectedSizeType)
             if (resolved && resolved.id) {
-              fetch(`http://localhost:8080/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+              fetch(`${API_URL}/size-values`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
                 .then(r=>r.ok? r.json(): Promise.reject(r))
                 .then((all:any[])=> setAvailableSizes(all.filter(s=> s.size_type_id === resolved.id)))
                 .catch(()=> setAvailableSizes([]))
@@ -551,7 +552,7 @@ export default function NuevoProductoPage() {
       ? selectedColors
       : colors.map((c:any)=> c.key ?? String(c.id) )
     try {
-      const res = await fetch(`http://localhost:8080/products/${createdProductId}/variants/generate`, {
+      const res = await fetch(`${API_URL}/products/${createdProductId}/variants/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ colors: colorKeys, sizes: selectedSizes, sku_prefix: skuPrefix })
@@ -601,7 +602,7 @@ export default function NuevoProductoPage() {
       })
     })
     try{
-      const res = await fetch(`http://localhost:8080/products/${createdProductId}/stocks`, {
+      const res = await fetch(`${API_URL}/products/${createdProductId}/stocks`, {
         method: 'POST', headers: { 'Content-Type':'application/json', ...(token? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ stocks: stocksPayload })
       })
@@ -653,7 +654,7 @@ export default function NuevoProductoPage() {
       // Crear variantes una por una
       const createdVariants = [];
       for (const variantData of variantsToCreate) {
-        const response = await fetch(`http://localhost:8080/products/${createdProductId}/variants`, {
+        const response = await fetch(`${API_URL}/products/${createdProductId}/variants`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1256,7 +1257,7 @@ export default function NuevoProductoPage() {
                 
                 try {
                   const token = localStorage.getItem("token");
-                  const API_BASE = 'http://localhost:8080';
+                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
                   
                   // Preparar array de stocks para enviar en batch
                   const stocksArray = Object.entries(simpleStocks)
@@ -1273,7 +1274,7 @@ export default function NuevoProductoPage() {
                   }
                   
                   // Enviar todos los stocks en una sola petición
-                  const response = await fetch(`${API_BASE}/products/${createdProductId}/stocks`, {
+                  const response = await fetch(`${API_URL}/products/${createdProductId}/stocks`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

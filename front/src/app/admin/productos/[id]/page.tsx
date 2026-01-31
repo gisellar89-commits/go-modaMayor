@@ -5,6 +5,7 @@ import VariantsTable from "../../../../components/VariantsTable";
 import { fetchProductById, fetchCategories } from "../../../../utils/api";
 
 export default function EditarProductoPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const { id } = useParams();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -51,11 +52,11 @@ export default function EditarProductoPage() {
     Promise.all([
       fetchProductById(pid, token),
       fetchCategories(token),
-      fetch('http://localhost:8080/suppliers', { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch('http://localhost:8080/size-types', { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch('http://localhost:8080/public/colors').then(r => r.ok ? r.json() : []),
-      fetch(`http://localhost:8080/location-stocks?product_id=${pid}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch('http://localhost:8080/public/seasons').then(r => r.ok ? r.json() : [])
+      fetch(`${API_URL}/suppliers`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_URL}/size-types`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_URL}/public/colors`).then(r => r.ok ? r.json() : []),
+      fetch(`${API_URL}/location-stocks?product_id=${pid}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_URL}/public/seasons`).then(r => r.ok ? r.json() : [])
     ])
       .then(([prod, cats, supps, sizes, cols, stocks, seas]) => {
         console.log('DEBUG - Product data:', {
@@ -76,7 +77,7 @@ export default function EditarProductoPage() {
         
         // Cargar subcategorías si hay categoría
         if (prod.category_id) {
-          fetch(`http://localhost:8080/categories/${prod.category_id}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+          fetch(`${API_URL}/categories/${prod.category_id}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
             .then(r => r.ok ? r.json() : [])
             .then(subs => setSubcategories(Array.isArray(subs) ? subs : []));
         }

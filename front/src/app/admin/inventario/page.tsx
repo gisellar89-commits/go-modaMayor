@@ -1,3 +1,4 @@
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 "use client";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -130,7 +131,7 @@ export default function InventarioPage() {
   const loadCategories = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/categories", {
+      const res = await fetch(`${API_URL}/categories`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -145,7 +146,7 @@ export default function InventarioPage() {
   const loadSuppliers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8080/suppliers", {
+      const res = await fetch(`${API_URL}/suppliers`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {
@@ -163,7 +164,7 @@ export default function InventarioPage() {
       const token = localStorage.getItem("token");
       
       // Cargar productos con variantes y stocks
-      const resProducts = await fetch("http://localhost:8080/products", {
+      const resProducts = await fetch(`${API_URL}/products`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!resProducts.ok) throw new Error("Error cargando productos");
@@ -182,7 +183,7 @@ export default function InventarioPage() {
       const enrichedProducts = await Promise.all(
         productsData.map(async (product: Product) => {
           // Cargar variantes
-          const resVariants = await fetch(`http://localhost:8080/products/${product.ID}/variants`, {
+          const resVariants = await fetch(`${API_URL}/products/${product.ID}/variants`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           
@@ -195,7 +196,7 @@ export default function InventarioPage() {
               const variantsWithStocks = await Promise.all(
                 variants.map(async (variant) => {
                   const resStocks = await fetch(
-                    `http://localhost:8080/location-stocks?variant_id=${variant.ID}`,
+                    `${API_URL}/location-stocks?variant_id=${variant.ID}`,
                     { headers: token ? { Authorization: `Bearer ${token}` } : {}, }
                   );
                   if (resStocks.ok) {
@@ -212,7 +213,7 @@ export default function InventarioPage() {
           
           // Si no tiene variantes, cargar stocks del producto directamente (con variant_id NULL)
           const resStocks = await fetch(
-            `http://localhost:8080/location-stocks?product_id=${product.ID}&variant_id=null`,
+            `${API_URL}/location-stocks?product_id=${product.ID}&variant_id=null`,
             { headers: token ? { Authorization: `Bearer ${token}` } : {}, }
           );
           if (resStocks.ok) {
@@ -276,7 +277,7 @@ export default function InventarioPage() {
       setLoadingMovements(true);
       const token = localStorage.getItem("token");
       
-      let url = "http://localhost:8080/stock-movements?";
+      let url = `${API_URL}/stock-movements?`;
       const params = [];
       if (productId) params.push(`product_id=${productId}`);
       if (variantId) params.push(`variant_id=${variantId}`);
@@ -310,7 +311,7 @@ export default function InventarioPage() {
         ? { variant_id: variantId, location, quantity: newStock }
         : { product_id: productId, location, quantity: newStock };
       
-      const res = await fetch(`http://localhost:8080/products/${productId}/stocks`, {
+      const res = await fetch(`${API_URL}/products/${productId}/stocks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -647,7 +648,7 @@ export default function InventarioPage() {
                     <div className="w-14 h-14 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden">
                       {product.image_url ? (
                         <img 
-                          src={product.image_url.startsWith('/') ? `http://localhost:8080${product.image_url}` : product.image_url}
+                          src={product.image_url.startsWith('/') ? `${API_URL}${product.image_url}` : product.image_url}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />

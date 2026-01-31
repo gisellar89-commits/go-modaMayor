@@ -28,6 +28,7 @@ const SECTIONS = [
 ];
 
 export default function HomeSectionsPage() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [entries, setEntries] = useState<HomeSectionEntry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,10 +49,10 @@ export default function HomeSectionsPage() {
     const token = localStorage.getItem("token");
     try {
       const [entriesRes, productsRes] = await Promise.all([
-        fetch("http://localhost:8080/settings/home_sections", {
+        fetch(`${API_URL}/settings/home_sections`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
-        fetch("http://localhost:8080/products", {
+        fetch(`${API_URL}/products`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }),
       ]);
@@ -99,7 +100,7 @@ export default function HomeSectionsPage() {
       formData.append("order", nextOrder.toString());
       formData.append("active", "true");
 
-      const res = await fetch("http://localhost:8080/settings/home_sections", {
+      const res = await fetch(`${API_URL}/settings/home_sections`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -123,7 +124,7 @@ export default function HomeSectionsPage() {
       const formData = new FormData();
       formData.append("active", (!currentActive).toString());
 
-      const res = await fetch(`http://localhost:8080/settings/home_sections/${entryId}`, {
+      const res = await fetch(`${API_URL}/settings/home_sections/${entryId}`, {
         method: "PUT",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -143,7 +144,7 @@ export default function HomeSectionsPage() {
 
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:8080/settings/home_sections/${entryId}`, {
+      const res = await fetch(`${API_URL}/settings/home_sections/${entryId}`, {
         method: "DELETE",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -162,7 +163,7 @@ export default function HomeSectionsPage() {
 
     const token = localStorage.getItem("token");
     try {
-      const res = await fetch(`http://localhost:8080/settings/home_sections/sync-from-tags?section=${section}&limit=12`, {
+      const res = await fetch(`${API_URL}/settings/home_sections/sync-from-tags?section=${section}&limit=12`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -203,7 +204,7 @@ export default function HomeSectionsPage() {
         { id: id2, order: order1 },
       ];
 
-      const res = await fetch("http://localhost:8080/settings/home_sections/reorder", {
+      const res = await fetch(`${API_URL}/settings/home_sections/reorder`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -347,7 +348,7 @@ export default function HomeSectionsPage() {
                   <div className="w-16 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
                     {product?.image_url ? (
                       <img
-                        src={product.image_url.startsWith("/") ? `http://localhost:8080${product.image_url}` : product.image_url}
+                        src={product.image_url.startsWith("/") ? `${API_URL}${product.image_url}` : product.image_url}
                         alt={product.name}
                         className="w-full h-full object-cover"
                       />
@@ -479,7 +480,7 @@ export default function HomeSectionsPage() {
                       <div className="w-12 h-12 bg-gray-200 rounded overflow-hidden flex-shrink-0">
                         {product.image_url ? (
                           <img
-                            src={product.image_url.startsWith("/") ? `http://localhost:8080${product.image_url}` : product.image_url}
+                            src={product.image_url.startsWith("/") ? `${API_URL}${product.image_url}` : product.image_url}
                             alt={product.name}
                             className="w-full h-full object-cover"
                           />
