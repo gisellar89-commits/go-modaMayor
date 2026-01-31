@@ -31,3 +31,6 @@ uploads/
 *.db
 *.sqlite
 *.sqlite3
+
+# Evitar que se trackee el archivo migración vacío en la raíz
+/apply_migrations.go
