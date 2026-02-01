@@ -33,7 +33,7 @@ export default function UsersAdmin() {
     email: "",
     phone: "",
     password: "",
-    role: "cliente",
+    role: "vendedor",
     active: true,
     working_from: "",
     working_to: ""
@@ -612,13 +612,19 @@ export default function UsersAdmin() {
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={editingUser.role === "cliente"}
                 >
                   <option value="cliente">Cliente</option>
                   <option value="vendedor">Vendedor</option>
                   <option value="encargado">Encargado</option>
                   <option value="admin">Admin</option>
                 </select>
+                {editingUser.role === "cliente" && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    El rol de cliente no puede ser modificado desde aquí
+                  </p>
+                )}
               </div>
               
               <div>
@@ -633,26 +639,28 @@ export default function UsersAdmin() {
                 </label>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Horario desde</label>
-                  <input
-                    type="time"
-                    value={editForm.working_from}
-                    onChange={(e) => setEditForm({ ...editForm, working_from: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
-                  />
+              {editingUser.role !== "cliente" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Horario desde</label>
+                    <input
+                      type="time"
+                      value={editForm.working_from}
+                      onChange={(e) => setEditForm({ ...editForm, working_from: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Horario hasta</label>
+                    <input
+                      type="time"
+                      value={editForm.working_to}
+                      onChange={(e) => setEditForm({ ...editForm, working_to: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Horario hasta</label>
-                  <input
-                    type="time"
-                    value={editForm.working_to}
-                    onChange={(e) => setEditForm({ ...editForm, working_to: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="flex gap-2 justify-end pt-4">
                 <button

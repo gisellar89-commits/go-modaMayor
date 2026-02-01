@@ -62,8 +62,21 @@ Una vez dentro, verás el menú lateral con las siguientes opciones:
 
 ## 2. Configuración de Usuarios
 
+
 ### 2.1. Crear Vendedoras
 **¿Para qué?** Las vendedoras asisten a los clientes en su proceso de compra.
+
+#### Permisos del rol "vendedor"
+Un usuario con rol "vendedor" tiene los siguientes permisos:
+
+- Acceso a su propio panel de ventas y pedidos asignados.
+- Puede ver el listado de productos y precios, pero no puede crear, editar ni eliminar productos.
+- Puede gestionar y consultar sus propias órdenes y carritos asignados.
+- Puede realizar el proceso de checkout y asignarse pedidos.
+- Puede ver reportes de ventas y rankings donde figura como vendedor.
+- No tiene acceso a la gestión de usuarios, configuración de sistema, ni administración de productos (solo consulta).
+- No puede acceder a rutas administrativas reservadas para admin/encargado (ejemplo: /admin/productos, /admin/usuarios, /admin/banners, etc.).
+- No puede editar carritos ni pedidos de otros vendedores.
 
 **Pasos**:
 1. Click en **"Usuarios"** en el menú lateral
@@ -844,6 +857,7 @@ Si querés mostrar videos:
 ### 14.4. Configurar Secciones del Home
 **¿Qué son?** Secciones de productos destacados (ej: "Más Vendidos", "Nuevos Ingresos")
 
+
 1. **"Contenido"** → **"Secciones de Home"**
 2. Click en **"Sincronizar desde Tags"**
 3. Esto crea automáticamente secciones basadas en los tags de productos
@@ -857,9 +871,17 @@ Si querés mostrar videos:
    Tipo: tag
    Tag: bestseller
    Orden: 1
-   Límite de Productos: 12
+   Límite de Productos: 12 (puede ser de 1 a 100)
+   Modo de Visualización: both (puede ser 'manual', 'auto' o 'both')
    Activo: ✓
    ```
+
+**Campos importantes:**
+- **Límite de Productos:** Debe estar entre 1 y 100.
+- **Modo de Visualización (show_mode):**
+  - `manual`: productos seleccionados manualmente
+  - `auto`: productos seleccionados automáticamente por el sistema
+  - `both`: muestra productos tanto manuales como automáticos
 
 **Ejemplo de secciones útiles**:
 ```
@@ -984,6 +1006,24 @@ Click en **"Guardar Configuración"**
 ## 📊 Resumen de Configuración
 
 ### Orden Recomendado de Configuración:
+### Tabla de permisos por rol
+
+| Permiso / Función                | Admin | Encargado | Vendedor | Cliente |
+|-----------------------------------|:-----:|:---------:|:--------:|:-------:|
+| Acceso total al panel admin       |   ✔   |     ✔     |          |         |
+| Gestión de usuarios              |   ✔   |     ✔*    |          |         |
+| Gestión de productos             |   ✔   |     ✔     | Consulta |         |
+| Gestión de stock                 |   ✔   |     ✔     | Consulta |         |
+| Gestión de price tiers           |   ✔   |     ✔     |          |         |
+| Gestión de banners y home        |   ✔   |     ✔     |          |         |
+| Gestión de FAQs y contacto       |   ✔   |     ✔     |          |         |
+| Ver y gestionar sus ventas       |   ✔   |     ✔     |    ✔     |         |
+| Ver reportes y rankings          |   ✔   |     ✔     |    ✔     |         |
+| Asignarse pedidos                |   ✔   |     ✔     |    ✔     |         |
+| Checkout y gestión de carritos   |   ✔   |     ✔     |    ✔     |   ✔     |
+| Acceso público (catálogo, home)  |   ✔   |     ✔     |    ✔     |   ✔     |
+
+*Encargado puede gestionar usuarios solo en algunos módulos según configuración.
 1. ✅ **Usuarios** (vendedoras)
 2. ✅ **Categorías** y **Subcategorías**
 3. ✅ **Colores**

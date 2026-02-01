@@ -23,6 +23,12 @@ func main() {
 	// 1. Conectar y obtener la instancia de GORM
 	db := config.ConnectDatabase()
 
+	// 1.1. Ejecutar migraciones SQL automáticamente
+	// Esto ejecutará todos los archivos .sql en migrations/ que no se hayan ejecutado antes
+	if err := config.RunSQLMigrations(db); err != nil {
+		panic("Error ejecutando migraciones SQL: " + err.Error())
+	}
+
 	// 2. Ejecutar migración de modelos sólo si AUTO_MIGRATE=true
 	if os.Getenv("AUTO_MIGRATE") == "true" {
 		// 2. Ejecutar migración de modelos
