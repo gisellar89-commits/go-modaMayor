@@ -8,10 +8,12 @@ import (
 	"go-modaMayor/internal/audit"
 	"go-modaMayor/internal/cart"
 	"go-modaMayor/internal/category"
+	"go-modaMayor/internal/faq"
 	"go-modaMayor/internal/kit"
 	"go-modaMayor/internal/notification"
 	"go-modaMayor/internal/order"
 	"go-modaMayor/internal/product"
+	"go-modaMayor/internal/remito"
 	"go-modaMayor/internal/settings"
 	"go-modaMayor/internal/user"
 	"go-modaMayor/routes"
@@ -76,8 +78,15 @@ func main() {
 		if err := db.AutoMigrate(&product.Color{}); err != nil {
 			panic("Falló migración Color: " + err.Error())
 		}
+		if err := db.AutoMigrate(&product.Season{}); err != nil {
+			panic("Falló migración Season: " + err.Error())
+		}
 		if err := db.AutoMigrate(&product.StockMovement{}); err != nil {
 			panic("Falló migración StockMovement: " + err.Error())
+		}
+		// Settings migrations
+		if err := db.AutoMigrate(&settings.PriceTier{}); err != nil {
+			panic("Falló migración PriceTier: " + err.Error())
 		}
 		// Topbar settings migration
 		if err := db.AutoMigrate(&settings.Topbar{}); err != nil {
@@ -113,6 +122,14 @@ func main() {
 		// Notifications migration
 		if err := db.AutoMigrate(&notification.Notification{}); err != nil {
 			panic("Falló migración Notification: " + err.Error())
+		}
+		// Remitos internos migration
+		if err := db.AutoMigrate(&remito.RemitoInterno{}, &remito.RemitoInternoItem{}); err != nil {
+			panic("Falló migración RemitoInterno: " + err.Error())
+		}
+		// FAQs migration
+		if err := db.AutoMigrate(&faq.FAQ{}); err != nil {
+			panic("Falló migración FAQ: " + err.Error())
 		}
 	}
 
