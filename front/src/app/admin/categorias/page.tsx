@@ -145,7 +145,8 @@ export default function CategoriasAdmin() {
                 <div className="flex gap-2 ml-auto">
                   <button className="p-1" title="Editar" onClick={() => handleEdit(cat)}>
                     <Image src="/edit.svg" alt="Editar" width={20} height={20} />
-                  </button>{
+                  </button>
+                  <button className="p-1" title="Eliminar" onClick={() => {
                     setDeleteConfirmId(cat.id || cat.ID);
                     setDeleteCategoryName(cat.name);
                   }}>
@@ -164,7 +165,7 @@ export default function CategoriasAdmin() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-bold mb-4 text-gray-900">Confirmar eliminación</h3>
             <p className="text-gray-700 mb-6">
-              ¿Estás seguro que deseas eliminar la categoría <span className="font-semibold">"{deleteCategoryName}"</span>?
+              ¿Estás seguro que deseas eliminar la categoría <span className="font-semibold">&quot;{deleteCategoryName}&quot;</span>?
             </p>
             <div className="flex gap-3 justify-end">
               <button
@@ -183,7 +184,6 @@ export default function CategoriasAdmin() {
           </div>
         </div>
       )}
-      </ul>
     </section>
   );
 }
