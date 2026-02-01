@@ -6,6 +6,8 @@ export default function CategoriasAdmin() {
   const [editId, setEditId] = useState<string | number | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | number | null>(null);
+  const [deleteCategoryName, setDeleteCategoryName] = useState("");
 
   const handleEdit = (cat: any) => {
     setEditId(cat.id || cat.ID);
@@ -46,7 +48,6 @@ export default function CategoriasAdmin() {
   };
 
   const handleDelete = async (id: string | number) => {
-    if (!window.confirm("¿Seguro que deseas eliminar esta categoría?")) return;
     setError(null);
     setSuccess(null);
     try {
@@ -60,8 +61,10 @@ export default function CategoriasAdmin() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo eliminar la categoría");
       setSuccess("Categoría eliminada exitosamente");
+      setDeleteConfirmId(null);
     } catch (e: any) {
       setError(e.message);
+      setDeleteConfirmId(null);
     }
   };
   const [categories, setCategories] = useState<any[]>([]);
@@ -142,8 +145,10 @@ export default function CategoriasAdmin() {
                 <div className="flex gap-2 ml-auto">
                   <button className="p-1" title="Editar" onClick={() => handleEdit(cat)}>
                     <Image src="/edit.svg" alt="Editar" width={20} height={20} />
-                  </button>
-                  <button className="p-1" title="Eliminar" onClick={() => handleDelete(cat.id || cat.ID)}>
+                  </button>{
+                    setDeleteConfirmId(cat.id || cat.ID);
+                    setDeleteCategoryName(cat.name);
+                  }}>
                     <Image src="/trash.svg" alt="Eliminar" width={20} height={20} />
                   </button>
                 </div>
@@ -151,6 +156,33 @@ export default function CategoriasAdmin() {
             )}
           </li>
         ))}
+      </ul>
+
+      {/* Modal de confirmación de eliminación */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-gray-900">Confirmar eliminación</h3>
+            <p className="text-gray-700 mb-6">
+              ¿Estás seguro que deseas eliminar la categoría <span className="font-semibold">"{deleteCategoryName}"</span>?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </ul>
     </section>
   );

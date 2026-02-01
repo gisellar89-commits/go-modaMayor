@@ -121,7 +121,7 @@ export default function SubcategoryAdmin() {
     }
     try {
   const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch("http://localhost:8080/subcategories", {
+      const res = await fetch(`${API_URL}/subcategories`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

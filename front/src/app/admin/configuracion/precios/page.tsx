@@ -38,6 +38,9 @@ export default function PreciosConfigPage() {
     errors: number;
     tiers_applied: number;
   } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const [formData, setFormData] = useState<PriceTier>({
     name: '',
     display_name: '',
@@ -99,23 +102,21 @@ export default function PreciosConfigPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        alert('Error: ' + (error.error || 'No se pudo guardar'));
+        setErrorMessage(error.error || 'No se pudo guardar');
         return;
       }
 
-      alert(editingTier ? 'Nivel de precio actualizado' : 'Nivel de precio creado');
+      setSuccessMessage(editingTier ? 'Nivel de precio actualizado' : 'Nivel de precio creado');
       setShowModal(false);
       setEditingTier(null);
       loadTiers();
     } catch (error) {
       console.error('Error al guardar:', error);
-      alert('Error al guardar');
+      setErrorMessage('Error al guardar');
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este nivel de precio?')) return;
-
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/price-tiers/${id}`, {
@@ -127,15 +128,16 @@ export default function PreciosConfigPage() {
 
       if (!res.ok) {
         const error = await res.json();
-        alert('Error: ' + (error.error || 'No se pudo eliminar'));
+        setErrorMessage(error.error || 'No se pudo eliminar');
         return;
       }
 
-      alert('Nivel de precio eliminado');
+      setSuccessMessage('Nivel de precio eliminado');
+      setDeleteConfirmId(null);
       loadTiers();
     } catch (error) {
       console.error('Error al eliminar:', error);
-      alert('Error al eliminar');
+      setErrorMessage('Error al eliminar');
     }
   };
 
@@ -181,7 +183,7 @@ export default function PreciosConfigPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert('Error: ' + (data.error || 'No se pudo recalcular'));
+        setErrorMessage(data.error || 'No se pudo recalcular');
         return;
       }
 
@@ -189,7 +191,7 @@ export default function PreciosConfigPage() {
       setShowResultModal(true);
     } catch (error) {
       console.error('Error al recalcular:', error);
-      alert('Error al recalcular productos');
+      setErrorMessage('Error al recalcular productos');
     } finally {
       setRecalculating(false);
     }
@@ -326,7 +328,7 @@ export default function PreciosConfigPage() {
                       </button>
                       {!tier.is_default && (
                         <button
-                          onClick={() => handleDelete(tier.ID!)}
+                          onClick={() => setDeleteConfirmId(tier.ID!)}
                           className="text-red-600 hover:text-red-700 text-sm font-medium"
                         >
                           Eliminar
@@ -683,6 +685,92 @@ export default function PreciosConfigPage() {
 
             <button
               onClick={() => setShowResultModal(false)}
+              className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">⚠️</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Eliminar nivel de precio?
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Esta acción no se puede deshacer. El nivel será eliminado permanentemente.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de éxito */}
+      {successMessage && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">✅</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¡Éxito!
+              </h3>
+              <p className="text-gray-600 text-sm">
+                {successMessage}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSuccessMessage('')}
+              className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de error */}
+      {errorMessage && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">❌</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                Error
+              </h3>
+              <p className="text-gray-600 text-sm">
+                {errorMessage}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setErrorMessage('')}
               className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium shadow-lg hover:shadow-xl"
             >
               Aceptar
