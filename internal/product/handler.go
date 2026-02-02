@@ -546,7 +546,8 @@ func UploadProductImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	product.ImageURL = "/" + filename
+	// Guardar solo el path relativo sin la barra inicial
+	product.ImageURL = filename
 	if err := config.DB.Save(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -582,16 +583,17 @@ func UploadProductImages(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al guardar " + fieldName})
 				return
 			}
-			uploadedImages[fieldName] = "/" + filename
+			// Guardar solo el path relativo sin la barra inicial
+			uploadedImages[fieldName] = filename
 
 			// Actualizar el campo correspondiente en el producto
 			switch fieldName {
 			case "image_main":
-				product.ImageURL = "/" + filename
+				product.ImageURL = filename
 			case "image_model":
-				product.ImageModel = "/" + filename
+				product.ImageModel = filename
 			case "image_hanger":
-				product.ImageHanger = "/" + filename
+				product.ImageHanger = filename
 			}
 		}
 	}

@@ -17,6 +17,8 @@ export default function SubcategoryAdmin() {
   const [editName, setEditName] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdCategoryId, setCreatedCategoryId] = useState<string>("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | string | null>(null);
+  const [deleteSubcategoryName, setDeleteSubcategoryName] = useState<string>("");
 
   // Fetch subcategories when categoryId changes
   useEffect(() => {
@@ -40,7 +42,6 @@ export default function SubcategoryAdmin() {
   }, [categoryId, successList]);
 
   const handleDelete = async (id: string | number) => {
-    if (!window.confirm("¿Seguro que deseas eliminar esta subcategoría?")) return;
     setErrorList(null);
     setSuccessList(null);
     try {
@@ -54,6 +55,7 @@ export default function SubcategoryAdmin() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo eliminar la subcategoría");
       setSuccessList("Subcategoría eliminada exitosamente");
+      setDeleteConfirmId(null);
     } catch (e: any) {
       setErrorList(e.message);
     }
@@ -250,7 +252,8 @@ export default function SubcategoryAdmin() {
                     onClick={() => {
                       const sid = (sub.id ?? sub.ID);
                       if (sid === undefined || sid === null) return;
-                      handleDelete(sid as string | number);
+                      setDeleteConfirmId(sid as string | number);
+                      setDeleteSubcategoryName(sub.name);
                     }}
                   >
                     <Image src="/trash.svg" alt="Eliminar" width={20} height={20} />
@@ -260,6 +263,43 @@ export default function SubcategoryAdmin() {
             );
           })}
         </ul>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {deleteConfirmId !== null && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-red-400 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">⚠️</span>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                ¿Eliminar subcategoría?
+              </h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                ¿Estás seguro que deseas eliminar la subcategoría <span className="font-semibold">&quot;{deleteSubcategoryName}&quot;</span>? Esta acción no se puede deshacer.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setDeleteConfirmId(null);
+                  setDeleteSubcategoryName("");
+                }}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirmId)}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all font-medium shadow-lg hover:shadow-xl"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
