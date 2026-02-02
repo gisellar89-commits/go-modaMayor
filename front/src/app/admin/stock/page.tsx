@@ -174,7 +174,7 @@ export default function StockAdminPage() {
                                           setFeedback(fb => ({ ...fb, [stock.id]: "" }));
                                           try {
                                             const token = localStorage.getItem("token") ?? undefined;
-                                            const res = await fetch(`${API_URL}/location_stock/${stock.id}`, {
+                                            const res = await fetch(`${API_BASE}/location_stock/${stock.id}`, {
                                               method: "PUT",
                                               headers: {
                                                 "Content-Type": "application/json",

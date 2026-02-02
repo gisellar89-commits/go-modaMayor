@@ -76,7 +76,7 @@ export default function EditarProductoPage() {
         
         // Cargar subcategorías si hay categoría
         if (prod.category_id) {
-          fetch(`${API_URL}/categories/${prod.category_id}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+          fetch(`${API_BASE}/categories/${prod.category_id}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
             .then(r => r.ok ? r.json() : [])
             .then(subs => setSubcategories(Array.isArray(subs) ? subs : []));
         }
