@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { API_BASE } from "../../../../../utils/api";
 
 interface Address {
   ID?: number;
@@ -47,7 +48,7 @@ export default function UserAddressesAdminPage() {
       const token = localStorage.getItem("token");
       
       // Fetch addresses
-      const resAddresses = await fetch(`http://localhost:8080/addresses/user/${userId}`, {
+      const resAddresses = await fetch(`${API_BASE}/addresses/user/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -79,7 +80,7 @@ export default function UserAddressesAdminPage() {
     try {
       const token = localStorage.getItem("token");
       const addressId = address.id || address.ID;
-      const res = await fetch(`http://localhost:8080/addresses/${addressId}/set-default`, {
+      const res = await fetch(`${API_BASE}/addresses/${addressId}/set-default`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`
@@ -102,7 +103,7 @@ export default function UserAddressesAdminPage() {
     try {
       const token = localStorage.getItem("token");
       const addressId = address.id || address.ID;
-      const res = await fetch(`http://localhost:8080/addresses/${addressId}`, {
+      const res = await fetch(`${API_BASE}/addresses/${addressId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`

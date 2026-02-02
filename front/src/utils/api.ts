@@ -209,12 +209,16 @@ export async function fetchProductById(id: string | number | undefined, token?: 
 export function resolveImageUrl(url: any) {
   if (!url) return url;
   const s = String(url);
-  // Si ya es una URL completa, devolverla tal cual
+  
+  // Si ya es una URL completa de Cloudinary o cualquier URL externa, devolverla tal cual
   if (s.startsWith('http://') || s.startsWith('https://')) return s;
-  // Si empieza con /, ya es un path absoluto desde el servidor, solo agregar el API_BASE
+  
+  // Si empieza con /, ya es un path absoluto desde el servidor, agregar el API_BASE
   if (s.startsWith('/')) return API_BASE.replace(/\/$/, '') + s;
+  
   // Si empieza con 'uploads/', agregar el API_BASE y la barra inicial
   if (s.startsWith('uploads/')) return API_BASE.replace(/\/$/, '') + '/' + s;
+  
   // Por defecto, asumir que es un nombre de archivo en uploads/
   return API_BASE.replace(/\/$/, '') + '/uploads/' + s;
 }

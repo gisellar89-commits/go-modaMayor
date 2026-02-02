@@ -5,7 +5,7 @@ import Link from "next/link";
 import VariantsTable, { Variant } from "../../../components/VariantsTable";
 import AddStockModal from "../../../components/AddStockModal";
 import { useAuth } from "../../../contexts/AuthContext";
-import { fetchProducts, fetchCategories } from "../../../utils/api";
+import { fetchProducts, fetchCategories, API_BASE, resolveImageUrl } from "../../../utils/api";
 import { fetchProductsPaged } from "../../../utils/api"; // Added import for fetchProductsPaged
 
 interface Product {
@@ -470,7 +470,7 @@ export default function AdminProductosPage() {
                 const payload: any = { ...variante };
                 payload.sku = `${baseSku}-${createdId}-${autoIdx}`;
                 // try initial create
-                let resp = await fetch(`http://localhost:8080/products/${createdId}/variants`, {
+                let resp = await fetch(`${API_BASE}/products/${createdId}/variants`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -495,7 +495,7 @@ export default function AdminProductosPage() {
                       try {
                         const newSku = `${payload.sku}-${attempt}`;
                         payload.sku = newSku;
-                        resp = await fetch(`http://localhost:8080/products/${createdId}/variants`, {
+                        resp = await fetch(`${API_BASE}/products/${createdId}/variants`, {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json",
@@ -904,7 +904,7 @@ export default function AdminProductosPage() {
                   <div className="w-14 h-14 bg-gray-100 rounded border border-gray-200 flex-shrink-0 overflow-hidden">
                     {prod.image_url ? (
                       <img 
-                        src={prod.image_url.startsWith('/') ? `http://localhost:8080${prod.image_url}` : prod.image_url} 
+                        src={resolveImageUrl(prod.image_url)} 
                         alt={prod.name} 
                         className="w-full h-full object-cover"
                       />
@@ -979,7 +979,7 @@ export default function AdminProductosPage() {
                         if (!window.confirm("¿Seguro que deseas eliminar este producto?")) return;
                         try {
                           const token = localStorage.getItem("token") ?? undefined;
-                          const res = await fetch(`http://localhost:8080/products/${id}`, {
+                          const res = await fetch(`${API_BASE}/products/${id}`, {
                             method: "DELETE",
                             headers: {
                               ...(token ? { Authorization: `Bearer ${token}` } : {})

@@ -1,10 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
-
-// Declaración global de API_URL para todo el componente
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 import { useAuth } from "../../../contexts/AuthContext";
-import { fetchProducts, Product, LocationStock } from "../../../utils/api";
+import { fetchProducts, Product, LocationStock, API_BASE } from "../../../utils/api";
 
 export default function StockAdminPage() {
   // Guardar todos los cambios de stock
@@ -234,7 +231,7 @@ export default function StockAdminPage() {
                                           setFeedback(fb => ({ ...fb, [`${variant.ID || variant.id}-add-${u}`]: "" }));
                                           try {
                                             const token = localStorage.getItem("token") ?? undefined;
-                                            const res = await fetch(`http://localhost:8080/variants/${variant.ID || variant.id}/stock`, {
+                                            const res = await fetch(`${API_BASE}/variants/${variant.ID || variant.id}/stock`, {
                                               method: "POST",
                                               headers: {
                                                 "Content-Type": "application/json",

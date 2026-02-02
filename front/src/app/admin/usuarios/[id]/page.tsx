@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { API_BASE } from "../../../../utils/api";
 
 interface User {
   ID?: number;
@@ -33,7 +34,7 @@ export default function UserDetailPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:8080/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

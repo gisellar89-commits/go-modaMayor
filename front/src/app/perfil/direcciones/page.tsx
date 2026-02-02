@@ -197,7 +197,7 @@ export default function AddressesPage() {
     try {
       const token = localStorage.getItem("token");
       const addressId = address.id || address.ID;
-      const res = await fetch(`http://localhost:8080/addresses/${addressId}`, {
+      const res = await fetch(`${API_BASE}/addresses/${addressId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`

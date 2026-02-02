@@ -2,10 +2,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import VariantsTable from "../../../../components/VariantsTable";
-import { fetchProductById, fetchCategories } from "../../../../utils/api";
+import { fetchProductById, fetchCategories, API_BASE, resolveImageUrl } from "../../../../utils/api";
 
 export default function EditarProductoPage() {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const { id } = useParams();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -156,7 +155,7 @@ export default function EditarProductoPage() {
         is_offer: product.is_offer || false,
         is_trending: product.is_trending || false
       };
-      const res = await fetch(`http://localhost:8080/products/${id}`, {
+      const res = await fetch(`${API_BASE}/products/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -185,7 +184,7 @@ export default function EditarProductoPage() {
     setSuccess(null);
     try {
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/products/${id}`, {
+      const res = await fetch(`${API_BASE}/products/${id}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -259,7 +258,7 @@ export default function EditarProductoPage() {
         formData.append(fieldNames[index], file);
       });
 
-      const res = await fetch(`http://localhost:8080/products/${id}/images`, {
+      const res = await fetch(`${API_BASE}/products/${id}/images`, {
         method: "POST",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -440,7 +439,7 @@ export default function EditarProductoPage() {
                     </div>
                     {product.image_url ? (
                       <img 
-                        src={product.image_url.startsWith('/') ? `http://localhost:8080${product.image_url}` : product.image_url} 
+                        src={resolveImageUrl(product.image_url)} 
                         alt="Principal" 
                         className="w-full h-40 object-cover rounded border"
                       />
@@ -471,7 +470,7 @@ export default function EditarProductoPage() {
                     </div>
                     {product.image_model ? (
                       <img 
-                        src={product.image_model.startsWith('/') ? `http://localhost:8080${product.image_model}` : product.image_model} 
+                        src={resolveImageUrl(product.image_model)} 
                         alt="Con Modelo" 
                         className="w-full h-40 object-cover rounded border"
                       />
@@ -502,7 +501,7 @@ export default function EditarProductoPage() {
                     </div>
                     {product.image_hanger ? (
                       <img 
-                        src={product.image_hanger.startsWith('/') ? `http://localhost:8080${product.image_hanger}` : product.image_hanger} 
+                        src={resolveImageUrl(product.image_hanger)} 
                         alt="En Perchero" 
                         className="w-full h-40 object-cover rounded border"
                       />
@@ -614,7 +613,7 @@ export default function EditarProductoPage() {
                     // Cargar subcategorías
                     if (catId) {
                       const token = localStorage.getItem("token") ?? undefined;
-                      fetch(`http://localhost:8080/categories/${catId}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+                      fetch(`${API_BASE}/categories/${catId}/subcategories`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
                         .then(r => r.ok ? r.json() : [])
                         .then(subs => setSubcategories(Array.isArray(subs) ? subs : []));
                     } else {
@@ -1063,7 +1062,7 @@ export default function EditarProductoPage() {
                                   // Guardar nueva variante
                                   try {
                                     const token = localStorage.getItem("token") ?? undefined;
-                                    const res = await fetch(`http://localhost:8080/products/${id}/variants`, {
+                                    const res = await fetch(`${API_BASE}/products/${id}/variants`, {
                                       method: 'POST',
                                       headers: {
                                         'Content-Type': 'application/json',
@@ -1107,7 +1106,7 @@ export default function EditarProductoPage() {
                                 if (!confirm('¿Eliminar esta variante?')) return;
                                 try {
                                   const token = localStorage.getItem("token") ?? undefined;
-                                  const res = await fetch(`http://localhost:8080/variants/${variantId}`, {
+                                  const res = await fetch(`${API_BASE}/variants/${variantId}`, {
                                     method: 'DELETE',
                                     headers: {
                                       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -1166,7 +1165,7 @@ export default function EditarProductoPage() {
                       });
                     });
 
-                    const res = await fetch(`http://localhost:8080/products/${id}/stocks`, {
+                    const res = await fetch(`${API_BASE}/products/${id}/stocks`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
@@ -1182,7 +1181,7 @@ export default function EditarProductoPage() {
                     setSuccess('Stocks actualizados exitosamente');
                     
                     // Recargar stocks
-                    fetch(`http://localhost:8080/location-stocks?product_id=${id}`, { 
+                    fetch(`${API_BASE}/location-stocks?product_id=${id}`, { 
                       headers: token ? { Authorization: `Bearer ${token}` } : {} 
                     })
                       .then(r => r.ok ? r.json() : [])

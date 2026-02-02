@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Order } from "../../../../utils/api";
+import { Order, API_BASE } from "../../../../utils/api";
 
 type Props = {
   order: Order;
@@ -20,7 +20,7 @@ export default function OrderRow({ order, statuses, onChangeStatus, onOpen, onRe
     const fetchLastEdit = async () => {
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : undefined;
-        const res = await fetch(`http://localhost:8080/audit/logs/order/${order.ID ?? order.id}`, {
+        const res = await fetch(`${API_BASE}/audit/logs/order/${order.ID ?? order.id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!res.ok) return;

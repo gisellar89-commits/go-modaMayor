@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { API_BASE } from "../../../utils/api";
 
 interface User {
   ID?: number;
@@ -144,7 +145,7 @@ export default function UsersAdmin() {
     try {
       const token = localStorage.getItem("token") ?? undefined;
       const userId = editingUser.id || editingUser.ID;
-      const res = await fetch(`http://localhost:8080/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -173,7 +174,7 @@ export default function UsersAdmin() {
     
     try {
       const token = localStorage.getItem("token") ?? undefined;
-      const res = await fetch(`http://localhost:8080/users/${userId}`, {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
         method: "DELETE",
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {})
