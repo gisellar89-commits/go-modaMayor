@@ -1,10 +1,12 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 
 	"go-modaMayor/config"
+	cloudinaryPkg "go-modaMayor/internal/cloudinary"
 	"go-modaMayor/internal/audit"
 	"go-modaMayor/internal/cart"
 	"go-modaMayor/internal/category"
@@ -22,18 +24,26 @@ import (
 )
 
 func main() {
-	// 1. Conectar y obtener la instancia de GORM
+	// 1. Inicializar Cloudinary
+	if err := cloudinaryPkg.InitCloudinary(); err != nil {
+		log.Printf("⚠️  Advertencia: Cloudinary no inicializado: %v", err)
+		log.Println("Las imágenes se guardarán localmente")
+	} else {
+		log.Println("✅ Cloudinary inicializado correctamente")
+	}
+
+	// 2. Conectar y obtener la instancia de GORM
 	db := config.ConnectDatabase()
 
-	// 1.1. Ejecutar migraciones SQL automáticamente
+	// 2.1. Ejecutar migraciones SQL automáticamente
 	// Esto ejecutará todos los archivos .sql en migrations/ que no se hayan ejecutado antes
 	if err := config.RunSQLMigrations(db); err != nil {
 		panic("Error ejecutando migraciones SQL: " + err.Error())
 	}
 
-	// 2. Ejecutar migración de modelos sólo si AUTO_MIGRATE=true
+	// 3. Ejecutar migración de modelos sólo si AUTO_MIGRATE=true
 	if os.Getenv("AUTO_MIGRATE") == "true" {
-		// 2. Ejecutar migración de modelos
+		// Ejecutar migración de modelos
 		if err := db.AutoMigrate(&product.Product{}); err != nil {
 			panic("Falló migración Product: " + err.Error())
 		}

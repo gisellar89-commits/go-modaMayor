@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"go-modaMayor/config"
+	cloudinaryPkg "go-modaMayor/internal/cloudinary"
 	"go-modaMayor/internal/category"
 	"go-modaMayor/internal/settings"
 	"log"
@@ -536,22 +537,36 @@ func UploadProductImage(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Producto no encontrado"})
 		return
 	}
-	file, err := c.FormFile("image")
+	
+	fileHeader, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No se recibió archivo"})
 		return
 	}
-	filename := "uploads/product_" + id + "_" + file.Filename
-	if err := c.SaveUploadedFile(file, filename); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	
+	// Abrir el archivo
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error abriendo archivo"})
 		return
 	}
-	// Guardar solo el path relativo sin la barra inicial
-	product.ImageURL = filename
+	defer file.Close()
+	
+	// Subir a Cloudinary
+	filename := fmt.Sprintf("product_%s_%s", id, fileHeader.Filename)
+	imageURL, err := cloudinaryPkg.UploadImage(file, filename, "products")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error subiendo a Cloudinary: %v", err)})
+		return
+	}
+	
+	// Guardar la URL completa de Cloudinary
+	product.ImageURL = imageURL
 	if err := config.DB.Save(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	
 	c.JSON(http.StatusOK, product)
 }
 
@@ -577,23 +592,35 @@ func UploadProductImages(c *gin.Context) {
 	for _, fieldName := range imageFields {
 		files := form.File[fieldName]
 		if len(files) > 0 {
-			file := files[0] // tomar el primer archivo de cada campo
-			filename := "uploads/product_" + id + "_" + fieldName + "_" + file.Filename
-			if err := c.SaveUploadedFile(file, filename); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al guardar " + fieldName})
+			fileHeader := files[0] // tomar el primer archivo de cada campo
+			
+			// Abrir el archivo
+			file, err := fileHeader.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error abriendo %s", fieldName)})
 				return
 			}
-			// Guardar solo el path relativo sin la barra inicial
-			uploadedImages[fieldName] = filename
+			
+			// Subir a Cloudinary
+			filename := fmt.Sprintf("product_%s_%s_%s", id, fieldName, fileHeader.Filename)
+			imageURL, err := cloudinaryPkg.UploadImage(file, filename, "products")
+			file.Close()
+			
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error subiendo %s a Cloudinary: %v", fieldName, err)})
+				return
+			}
+			
+			uploadedImages[fieldName] = imageURL
 
 			// Actualizar el campo correspondiente en el producto
 			switch fieldName {
 			case "image_main":
-				product.ImageURL = filename
+				product.ImageURL = imageURL
 			case "image_model":
-				product.ImageModel = filename
+				product.ImageModel = imageURL
 			case "image_hanger":
-				product.ImageHanger = filename
+				product.ImageHanger = imageURL
 			}
 		}
 	}
