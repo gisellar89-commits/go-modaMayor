@@ -51,11 +51,11 @@ export default function EditarProductoPage() {
     Promise.all([
       fetchProductById(pid, token),
       fetchCategories(token),
-      fetch(`${API_URL}/suppliers`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch(`${API_URL}/size-types`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch(`${API_URL}/public/colors`).then(r => r.ok ? r.json() : []),
-      fetch(`${API_URL}/location-stocks?product_id=${pid}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
-      fetch(`${API_URL}/public/seasons`).then(r => r.ok ? r.json() : [])
+      fetch(`${API_BASE}/suppliers`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/size-types`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/public/colors`).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/location-stocks?product_id=${pid}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(r => r.ok ? r.json() : []),
+      fetch(`${API_BASE}/public/seasons`).then(r => r.ok ? r.json() : [])
     ])
       .then(([prod, cats, supps, sizes, cols, stocks, seas]) => {
         console.log('DEBUG - Product data:', {
