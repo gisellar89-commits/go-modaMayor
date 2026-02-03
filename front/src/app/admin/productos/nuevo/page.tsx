@@ -492,12 +492,13 @@ export default function NuevoProductoPage() {
         
         console.log('🔍 DEBUG sizeTypeObj found:', sizeTypeObj);
         
-        const isSizeTypeUnico = sizeTypeObj?.key === 'unico' || sizeTypeObj?.name?.toLowerCase().includes('único') || sizeTypeObj?.name?.toLowerCase().includes('sin variantes');
-        const hasNoColorVariants = selectedColors.length === 1 && selectedColors[0] === 'unico';
+        const isSizeTypeUnico = !selectedSizeType || sizeTypeObj?.key === 'unico' || sizeTypeObj?.name?.toLowerCase().includes('único') || sizeTypeObj?.name?.toLowerCase().includes('sin variantes');
+        const hasNoColorVariants = selectedColors.length === 0 || (selectedColors.length === 1 && selectedColors[0] === 'unico');
         const productHasVariants = !(isSizeTypeUnico && hasNoColorVariants);
         
         console.log('🔍 Detectando variantes:', {
           sizeTypeObj,
+          selectedSizeType,
           isSizeTypeUnico,
           selectedColors,
           hasNoColorVariants,
@@ -1027,6 +1028,22 @@ export default function NuevoProductoPage() {
           <p className="text-xs text-gray-500 mt-2">
             💡 Selecciona &quot;Sin variante de color&quot; si el producto no tiene variaciones de color, 
             o elige uno o más colores si tiene variantes.
+          </p>
+        </div>
+
+        {/* Nota informativa sobre productos sin variantes */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>ℹ️ Productos sin variantes:</strong> Si tu producto no tiene variaciones de talle ni color 
+            (por ejemplo, un accesorio único), puedes:
+          </p>
+          <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc space-y-1">
+            <li>Seleccionar &quot;Talle único / sin variantes&quot; en Tipo de talles</li>
+            <li>Y marcar &quot;Sin variante de color&quot; arriba</li>
+            <li>O dejar ambos sin seleccionar</li>
+          </ul>
+          <p className="text-xs text-blue-600 mt-2">
+            El sistema detectará automáticamente que no necesitas generar variantes y te llevará directo a configurar el stock.
           </p>
         </div>
 

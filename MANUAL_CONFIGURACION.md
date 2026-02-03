@@ -2,8 +2,8 @@
 
 ## Guía Completa para Configurar el Sistema desde Cero
 
-**Versión**: 1.0  
-**Fecha**: 26 de diciembre de 2025  
+**Versión**: 1.1  
+**Fecha**: 2 de febrero de 2026  
 **Para**: Administradores del sistema
 
 ---
@@ -26,6 +26,9 @@
 14. [Configuración del Home](#14-configuración-del-home)
 15. [Configuración de FAQs](#15-configuración-de-faqs)
 16. [Configuración de Contacto](#16-configuración-de-contacto)
+17. [Gestión de Direcciones de Clientes](#17-gestión-de-direcciones-de-clientes)
+18. [Remitos Internos](#18-remitos-internos)
+19. [Configuración de Imágenes (Cloudinary)](#19-configuración-de-imágenes-cloudinary)
 
 ---
 
@@ -85,13 +88,17 @@ Un usuario con rol "vendedor" tiene los siguientes permisos:
    ```
    Nombre: Maria Lopez
    Email: maria@modamayor.com
-   Teléfono: 1123456789 (opcional)
+   Teléfono: 1123456789
    Role: vendedor
    Password: vendedor123
+   Horario desde: 09:00 (opcional)
+   Horario hasta: 18:00 (opcional)
    Activo: ✓ (marcado)
    ```
 4. Click en **"Crear Usuario"**
 5. Verificar que aparece en la lista con badge "vendedor"
+
+**Nota sobre horarios**: Los campos de horario son opcionales y permiten definir el horario de trabajo de cada vendedor para mejor organización.
 
 **Repetir** para crear más vendedoras según necesites (ej: 2-3 vendedoras)
 
@@ -599,14 +606,49 @@ Después de cambiar tiers:
 
 ## 11. Creación de Productos
 
-### 11.1. Acceder
+### 11.1. Acceder al Wizard de Creación
 1. **"Productos"** en el menú lateral
 2. Click en **"Nuevo Producto"**
+3. Se abre un wizard de 4 pasos:
+   - **Paso 1**: Información básica del producto
+   - **Paso 2**: Generación de variantes (solo si aplica)
+   - **Paso 3**: Selección manual de variantes (opcional)
+   - **Paso 4**: Configuración de stock por ubicación
 
-### 11.2. Completar Información Básica
+### 11.2. Paso 1: Información Básica
 
-**Ejemplo: Remera Básica de Algodón**
+**Campos Obligatorios:**
+- **Nombre**: Nombre descriptivo del producto
+- **Descripción**: Detalles del producto (tela, uso, características)
+- **Precio de Costo**: Precio al que compraste el producto
+- **Categoría**: Seleccionar categoría principal
+- **Subcategoría**: Se carga automáticamente según la categoría
 
+**Campos Opcionales:**
+- **Código**: SKU o código interno (si no se completa, el sistema genera uno)
+- **Descuento**: Tipo (porcentaje/fijo) y valor
+- **Imágenes**: Hasta 3 imágenes (Principal, Con Modelo, En Perchero)
+- **Tipo de Talle**: Seleccionar el tipo de talles que usará este producto
+- **Proveedor**: Seleccionar proveedor si corresponde
+- **Temporada**: Asociar a una temporada (Otoño, Primavera, etc.)
+- **Año**: Año de la temporada
+- **Tags**: Etiquetas para el home (Nuevo Ingreso, Destacado, En Oferta, Tendencia)
+
+**Configuración de Variantes:**
+
+**Para productos CON variantes:**
+- Seleccionar uno o más colores de la lista
+- Seleccionar un tipo de talle diferente de "Talle único / sin variantes"
+
+**Para productos SIN variantes** (accesorios, productos únicos):
+- Marcar "Sin variante de color" 
+- Y seleccionar "Talle único / sin variantes" (o dejar sin seleccionar)
+
+> **💡 Nota**: El sistema detecta automáticamente si tu producto necesita variantes y te lleva al paso correspondiente.
+
+### 11.3. Ejemplo de Producto CON Variantes
+
+**Remera Básica de Algodón**
 ```
 Nombre: Remera Básica de Algodón
 Código: REM-BAS-001
@@ -619,54 +661,39 @@ Categoría: Remeras
 Subcategoría: Manga Corta
 Proveedor: Textil SRL
 Temporada: Todo el Año
-
 Precio de Costo: 1500
-(El sistema calculará automáticamente los precios de venta según los tiers)
 
-Tipo de Talle: Letras Estándar
+Tipo de Talle: Letras Estándar (S, M, L, XL)
+Colores: Negro, Blanco, Azul (marcar los que correspondan)
 
-Tags/Etiquetas: basica, algodon, clasica (separar por comas)
+Tags: Nuevo Ingreso, Destacado
 ```
 
-### 11.3. Subir Imagen Principal
-1. En **"Imagen Principal"**, click en **"Seleccionar Archivo"**
-2. Elegir imagen del producto (formato JPG/PNG)
-3. La imagen se sube automáticamente
+### 11.4. Ejemplo de Producto SIN Variantes
 
-### 11.4. Crear el Producto
-1. Click en **"Crear Producto"**
-2. El sistema guarda el producto
-3. Redirige a la página de detalle del producto
-
-### 11.5. Crear Más Productos (Ejemplos)
-
-**Producto 2: Pantalón Jean Elastizado**
+**Gorra Deportiva Unisex**
 ```
-Nombre: Pantalón Jean Elastizado
-Código: PANT-JEA-002
-Descripción: Jean elastizado de corte moderno. Tiro medio.
-Categoría: Pantalones
-Subcategoría: Jean Elastizado
-Proveedor: Confecciones del Sur
-Temporada: Todo el Año
-Precio de Costo: 3500
-Tipo de Talle: Numérico Femenino
-Tags: jean, elastizado, comodo
+Nombre: Gorra Deportiva Unisex
+Código: GORRA-001
+Descripción: 
+  Gorra deportiva con ajuste regulable.
+  Talle único, material transpirable.
+
+Categoría: Accesorios
+Subcategoría: Gorras
+Precio de Costo: 800
+
+Tipo de Talle: Talle único / sin variantes
+Colores: ✓ Sin variante de color
 ```
 
-**Producto 3: Campera de Jean**
-```
-Nombre: Campera de Jean Clásica
-Código: CAMP-JEA-003
-Descripción: Campera de jean con corte clásico. Cierre con botones.
-Categoría: Camperas
-Subcategoría: Campera de Jean
-Proveedor: Indumentaria Total
-Temporada: Otoño
-Precio de Costo: 5000
-Tipo de Talle: Letras Estándar
-Tags: campera, jean, clasica
-```
+### 11.5. Crear el Producto
+1. Completar todos los campos obligatorios
+2. Click en **"Crear Producto"**
+3. El sistema:
+   - Guarda el producto
+   - Analiza si necesita variantes
+   - Te lleva al paso siguiente (Variantes o Stock)
 
 ---
 
@@ -675,44 +702,57 @@ Tags: campera, jean, clasica
 ### 12.1. ¿Qué son las Variantes?
 Combinaciones de talle + color de un producto (ej: Remera Azul M, Remera Azul L)
 
-### 12.2. Generar Variantes Automáticamente
-Después de crear un producto:
+> **Nota importante:** No todos los productos requieren variantes. Si tu producto no tiene variaciones de talle ni color (por ejemplo, un accesorio único), puedes crear un producto sin variantes.
 
-1. Estando en la página del producto, buscar sección **"Variantes"**
-2. Click en **"Generar Variantes"**
-3. Se abre un modal con dos listas:
-   - **Talles**: Lista de talles del tipo asociado
-   - **Colores**: Lista de todos los colores disponibles
+### 12.2. Flujo del Wizard de Creación
 
-4. **Seleccionar Talles**:
+Al crear un producto, el sistema analiza automáticamente tus selecciones:
+
+**Productos CON variantes** (el sistema te llevará al Paso 2 - Generación de Variantes):
+- Si seleccionaste colores Y un tipo de talle diferente de "Talle único"
+- Si seleccionaste solo colores (producto con variante de color únicamente)
+- Si seleccionaste solo un tipo de talle diferente de "único" (producto con variante de talle únicamente)
+
+**Productos SIN variantes** (el sistema te llevará directo al Paso 4 - Stock):
+- Si NO seleccionaste colores (o marcaste "Sin variante de color")
+- Y NO seleccionaste tipo de talle (o seleccionaste "Talle único / sin variantes")
+- Ejemplo: Accesorios, productos únicos, artículos sin variaciones
+
+### 12.3. Generar Variantes Automáticamente
+
+Si tu producto tiene variantes, el sistema te mostrará el Paso 2 del wizard:
+
+1. **Seleccionar Talles**:
+   - Verás una lista de talles según el tipo seleccionado
    - Marcar los talles que tendrás en stock
    - Ejemplo: S, M, L, XL (dejar sin marcar XS y XXL si no los tendrás)
 
-5. **Seleccionar Colores**:
-   - Marcar los colores disponibles
+2. **Seleccionar Colores**:
+   - Verás los colores disponibles en el sistema
+   - Marcar los colores disponibles para este producto
    - Ejemplo: Negro, Blanco, Azul
 
-6. Click en **"Generar Variantes"**
+3. Click en **"Generar Variantes"** o **"Selección Manual"**
 
-7. El sistema crea automáticamente todas las combinaciones:
+4. El sistema crea automáticamente todas las combinaciones:
    ```
-   - S + Negro
-   - S + Blanco
-   - S + Azul
-   - M + Negro
-   - M + Blanco
-   - M + Azul
-   - L + Negro
-   - L + Blanco
-   - L + Azul
-   - XL + Negro
-   - XL + Blanco
-   - XL + Azul
-   
-   Total: 12 variantes (4 talles × 3 colores)
+   Ejemplo con 4 talles × 3 colores = 12 variantes:
+   - S + Negro, S + Blanco, S + Azul
+   - M + Negro, M + Blanco, M + Azul
+   - L + Negro, L + Blanco, L + Azul
+   - XL + Negro, XL + Blanco, XL + Azul
    ```
 
-### 12.3. Editar Variantes Individualmente
+### 12.4. Selección Manual de Variantes
+
+Si prefieres elegir exactamente qué combinaciones crear (en lugar de generarlas todas):
+
+1. En el Paso 2, click en **"Selección Manual"**
+2. Verás un modal con todas las combinaciones posibles
+3. Marca solo las combinaciones que quieres crear
+4. Confirmar → El sistema crea solo esas variantes
+
+### 12.5. Editar Variantes Individualmente
 Si necesitas cambiar algo específico de una variante:
 1. En la lista de variantes, click en **"Editar"** en la variante
 2. Puedes cambiar:
@@ -720,12 +760,12 @@ Si necesitas cambiar algo específico de una variante:
    - Imagen específica (si la variante tiene foto propia)
 3. **"Guardar"**
 
-### 12.4. Eliminar Variantes
+### 12.6. Eliminar Variantes
 Si una combinación no existe (ej: no hay XL en Azul):
 1. Click en **"Eliminar"** (ícono de basura) en esa variante
 2. Confirmar
 
-### 12.5. Subir Imágenes por Color
+### 12.7. Subir Imágenes por Color
 Opcional: Si tenés fotos de cada color:
 1. Click en **"Propagar Imagen"**
 2. Seleccionar color (ej: Azul)
@@ -736,60 +776,112 @@ Opcional: Si tenés fotos de cada color:
 
 ## 13. Gestión de Stock
 
-### 13.1. Acceder al Stock de un Producto
-Opción A:
-1. **"Productos"** → Buscar el producto → Click en el producto
-2. Sección **"Variantes"** → cada variante tiene botón **"Gestionar Stock"**
+### 13.1. Sistema de Ubicaciones
+El sistema maneja **stock por ubicación**. Las ubicaciones disponibles son:
+- **Depósito**: Almacén central (ubicación principal para ventas online)
+- **Mendoza**: Sucursal de Mendoza
+- **Salta**: Sucursal de Salta
 
-Opción B:
-1. **"Inventario"** → Ver todas las variantes con stock
+Cada variante de producto puede tener stock en múltiples ubicaciones simultáneamente.
 
-### 13.2. Cargar Stock en una Variante
-1. Click en **"Gestionar Stock"** en la variante
-2. Se abre modal con campos:
+### 13.2. Acceder al Módulo de Inventario
+1. **"Inventario"** en el menú lateral
+2. Verás la pantalla principal de inventario con:
+   - Filtros por ubicación, categoría, proveedor
+   - Búsqueda por nombre o código
+   - Tabla con todos los productos y su stock por ubicación
+
+### 13.3. Gestionar Stock desde Edición de Producto
+
+#### Opción A: Productos con Variantes
+1. **"Productos"** → Seleccionar producto → Click en **"Editar"**
+2. Ir a la pestaña **"Stock por Ubicación"**
+3. Verás una tabla con todas las variantes (Color × Talle) y 3 columnas para cada ubicación:
    ```
-   Ubicación: Principal (default)
-   Stock Actual: 0
-   Nuevo Stock: [ingresar cantidad]
+   Color | Talle | Depósito | Mendoza | Salta | Total
+   Negro | S     | 50       | 10      | 5     | 65
+   Negro | M     | 40       | 15      | 8     | 63
+   Azul  | S     | 30       | 0       | 0     | 30
    ```
-3. Ejemplo: Ingresar **50** en "Nuevo Stock"
-4. Click en **"Actualizar Stock"**
+4. Editar directamente los números en cada celda
+5. Click en **"Guardar Stocks"** al finalizar
 
-### 13.3. Cargar Stock Masivo
-Si necesitas cargar stock de todas las variantes de un producto:
-
-1. En el producto, click en **"Cargar Stock Masivo"**
-2. Se muestra tabla con todas las variantes
-3. En cada fila, ingresar la cantidad:
+#### Opción B: Productos sin Variantes
+1. Si el producto no tiene variantes, verás una tabla simple:
    ```
-   S + Negro:  30
-   S + Blanco: 25
-   S + Azul:   20
-   M + Negro:  50
-   M + Blanco: 45
-   ...
+   Ubicación | Stock
+   Depósito  | 100
+   Mendoza   | 50
+   Salta     | 25
    ```
-4. Click en **"Guardar Todo"**
+2. Editar los valores y guardar
 
-### 13.4. Ajustar Stock
-Si necesitas corregir stock (por rotura, devolución, etc):
-1. Click en **"Gestionar Stock"** en la variante
-2. Ingresar el nuevo valor total
-3. El sistema registra el movimiento de stock
+### 13.4. Gestionar Stock desde Inventario
 
-### 13.5. Ver Historial de Movimientos
-1. **"Inventario"** → **"Movimientos de Stock"**
-2. Verás tabla con:
-   - Fecha y hora
-   - Producto y variante
-   - Cantidad (positiva o negativa)
-   - Tipo: entrada, salida, ajuste, venta
-   - Usuario que realizó el cambio
+1. **"Inventario"** → Seleccionar ubicación en el filtro (ej: Depósito)
+2. Ver el stock de todos los productos en esa ubicación
+3. Para editar:
+   - Click en el ícono de **"Ver Detalles"** (ojo) en el producto/variante
+   - Se abre un modal con:
+     - **Pestaña "Ubicaciones"**: Ver y editar stock en cada ubicación
+     - **Pestaña "Movimientos"**: Historial de movimientos de esa variante
+4. Editar el stock y guardar
 
-### 13.6. Productos con Bajo Stock
-1. **"Inventario"** → **"Bajo Stock"**
-2. Verás productos con stock menor a un umbral (ej: menos de 5 unidades)
-3. Útil para saber qué reponer
+### 13.5. Filtros de Inventario
+En la pantalla de inventario puedes filtrar por:
+- **Ubicación**: Depósito, Mendoza, Salta
+- **Categoría**: Filtrar por tipo de producto
+- **Proveedor**: Filtrar por proveedor
+- **Estado de Stock**:
+  - **Todos**: Ver todos los productos
+  - **Bajo Stock**: Productos con stock menor al umbral (configurable, por defecto 10 unidades)
+  - **Sin Stock**: Productos con 0 unidades
+  - **Con Reservas**: Productos con stock reservado por carritos activos
+
+### 13.6. Stock Reservado
+El sistema maneja **stock reservado** automáticamente:
+- Cuando un cliente agrega productos al carrito, se reserva el stock
+- El stock reservado no está disponible para otros clientes
+- Si el carrito no se completa en 24 horas, la reserva se libera automáticamente
+- En el inventario verás:
+  - **Stock**: Cantidad total física
+  - **Reservado**: Cantidad reservada por carritos
+  - **Disponible**: Stock - Reservado (disponible para nuevas ventas)
+
+### 13.7. Ver Historial de Movimientos
+1. **"Inventario"** → **"Movimientos de Stock"** (menú lateral)
+2. O desde el detalle de un producto/variante
+3. Verás tabla con:
+   - **Fecha y hora**
+   - **Producto y variante**
+   - **Ubicación**
+   - **Tipo de movimiento**:
+     - `Ajuste`: Corrección manual de stock
+     - `Venta`: Venta confirmada
+     - `Devolución`: Producto devuelto
+     - `Transferencia`: Traslado entre ubicaciones (remito interno)
+     - `Stock Inicial`: Carga inicial de stock
+   - **Cantidad**: Positiva (entrada) o negativa (salida)
+   - **Usuario**: Quién realizó el movimiento
+
+### 13.8. Productos con Bajo Stock
+Para ver productos que necesitan reposición:
+1. **"Inventario"** → Filtro **"Estado de Stock"** → Seleccionar **"Bajo Stock"**
+2. Ajustar el umbral si es necesario (por defecto 10 unidades)
+3. Verás solo los productos cuyo stock en la ubicación seleccionada es menor al umbral
+
+### 13.9. Expansión de Productos con Variantes
+En la vista de inventario:
+- Productos con variantes muestran un **botón "+"** para expandir
+- Click en el botón para ver el stock de cada variante individual
+- Verás una subtabla con Color, Talle y stock por ubicación
+
+### 13.10. Notas Importantes
+- **Los cambios de stock NO se guardan automáticamente**: Siempre hacer click en "Guardar" o "Guardar Stocks"
+- **Stock en Depósito**: Es la ubicación principal para ventas online
+- **Stock en Sucursales**: Para ventas locales o traslados a depósito vía remitos internos
+- **Stock Reservado**: Se gestiona automáticamente, no editar manualmente
+- **Movimientos de Stock**: Se registran automáticamente con cada cambio
 
 ---
 
@@ -1003,9 +1095,195 @@ Click en **"Guardar Configuración"**
 
 ---
 
+## 17. Gestión de Direcciones de Clientes
+
+### 17.1. ¿Para qué?
+Los clientes pueden tener múltiples direcciones de envío guardadas (casa, trabajo, etc.) para facilitar sus compras.
+
+### 17.2. Acceder a las Direcciones de un Cliente
+1. **"Usuarios"** → Buscar el cliente
+2. Click en el cliente para ver su perfil
+3. Click en **"Ver Direcciones"** (botón morado)
+4. Se muestra la lista de direcciones del cliente
+
+### 17.3. Estructura de una Dirección
+Cada dirección contiene:
+- **Etiqueta**: Casa, Trabajo, etc. (opcional)
+- **Nombre del destinatario**: Quien recibe el pedido
+- **Teléfono del destinatario**: Contacto para la entrega
+- **Calle y número**: Dirección completa
+- **Piso/Depto**: Opcional
+- **Ciudad**: Localidad
+- **Provincia**: Estado/Provincia
+- **Código Postal**: CP
+- **País**: Por defecto Argentina
+- **Referencia**: Indicaciones adicionales (opcional)
+- **Predeterminada**: Una dirección puede ser marcada como principal
+
+### 17.4. Marcar Dirección como Predeterminada
+1. En la lista de direcciones del cliente
+2. Click en **"Marcar como predeterminada"** en la dirección deseada
+3. Esa dirección se usará por defecto en los pedidos
+
+### 17.5. Eliminar una Dirección
+1. En la lista de direcciones
+2. Click en el botón **"Eliminar"** (ícono de basura)
+3. Confirmar la eliminación
+
+### 17.6. Notas Importantes
+- Los clientes pueden gestionar sus propias direcciones desde su perfil
+- Solo admin y encargado pueden ver/editar direcciones de otros usuarios
+- Los vendedores no tienen acceso a la gestión de direcciones
+- Cada cliente puede tener múltiples direcciones, pero solo una predeterminada
+
+---
+
+## 18. Remitos Internos
+
+### 18.1. ¿Qué son los Remitos Internos?
+Son documentos que registran el traslado de mercadería entre sucursales del sistema (ej: de Mendoza a Depósito, de Salta a Depósito).
+
+### 18.2. Acceder a Remitos Internos
+1. **"Inventario"** → **"Remitos Internos"**
+2. Se muestra la lista de remitos pendientes
+
+### 18.3. ¿Cuándo se Genera un Remito Interno?
+El sistema genera automáticamente un remito interno cuando:
+- Hay stock en una sucursal (Mendoza, Salta)
+- Ese stock necesita trasladarse al depósito central
+- Se completa una orden que requiere consolidar stock
+
+### 18.4. Información de un Remito
+Cada remito muestra:
+- **ID del remito**
+- **Ubicación origen**: Desde dónde se envía (Mendoza, Salta)
+- **Ubicación destino**: Hacia dónde va (generalmente Depósito)
+- **Estado**: pendiente, en_transito, completado, cancelado
+- **Items**: Lista de productos y cantidades a trasladar
+- **Fecha de creación**
+- **Notas**: Observaciones adicionales
+
+### 18.5. Gestión de Remitos
+- **Ver detalles**: Click en el remito para ver la información completa
+- **Cambiar estado**: Marcar como "en tránsito" o "completado" según avance el traslado
+- **Imprimir**: Generar documento para adjuntar al envío físico
+
+### 18.6. Estados de Remitos
+- **Pendiente**: Remito creado, esperando procesamiento
+- **En tránsito**: Mercadería en camino entre ubicaciones
+- **Completado**: Traslado finalizado, stock actualizado
+- **Cancelado**: Remito anulado
+
+---
+
+## 19. Configuración de Imágenes (Cloudinary)
+
+### 19.1. ¿Qué es Cloudinary?
+Cloudinary es un servicio de almacenamiento de imágenes en la nube que permite:
+- ✅ Almacenar imágenes de forma persistente
+- ✅ Las imágenes no se pierden al hacer deploy
+- ✅ CDN global para carga rápida en todo el mundo
+- ✅ 25 GB de almacenamiento gratuito
+- ✅ Transformaciones automáticas de imágenes
+
+### 19.2. Configuración en Producción (Render)
+Para configurar Cloudinary en el servidor de producción:
+
+1. Ir al **Dashboard de Render**
+2. Seleccionar el **servicio de backend (Go)**
+3. Click en **"Environment"** en el menú lateral
+4. Agregar las siguientes variables de entorno:
+   ```
+   CLOUDINARY_CLOUD_NAME=tu_cloud_name
+   CLOUDINARY_API_KEY=tu_api_key
+   CLOUDINARY_API_SECRET=tu_api_secret
+   ```
+5. Click en **"Save Changes"**
+6. Render hará un redeploy automático
+
+### 19.3. Verificar que Funciona
+Al iniciar el backend, verás en los logs:
+```
+✅ Cloudinary inicializado correctamente
+```
+
+### 19.4. Subir Imágenes
+Una vez configurado:
+1. Ir al admin → Productos
+2. Crear o editar un producto
+3. Subir una imagen
+4. La URL guardada será: `https://res.cloudinary.com/tu_cloud_name/image/upload/v.../products/product_1.jpg`
+
+### 19.5. Migración de Imágenes Antiguas
+Si tenías imágenes locales antes de configurar Cloudinary:
+- Las imágenes locales se pierden en cada deploy
+- Debes volver a subir las imágenes desde el admin
+- Las nuevas imágenes se guardarán automáticamente en Cloudinary y persistirán
+
+### 19.6. Notas Importantes
+- Las credenciales de Cloudinary se configuran solo en el backend
+- El frontend accede a las imágenes a través de las URLs públicas
+- No es necesario configurar nada en el frontend
+- El plan gratuito incluye 25 GB de almacenamiento y 25 GB de bandwidth por mes
+
+---
+
+## 20. Sistema de Migraciones Automáticas
+
+### 20.1. ¿Qué son las Migraciones?
+Las migraciones son cambios en la estructura de la base de datos (crear tablas, agregar columnas, etc.).
+
+### 20.2. Sistema Automático
+El sistema ahora ejecuta automáticamente todas las migraciones SQL al iniciar:
+- ✅ Lee todos los archivos `.sql` de la carpeta `migrations/`
+- ✅ Ejecuta solo las migraciones pendientes
+- ✅ Registra cada migración en la tabla `migration_records`
+- ✅ Evita ejecutar la misma migración dos veces
+- ✅ Funciona tanto en desarrollo como en producción
+
+### 20.3. Verificar Migraciones
+Al iniciar el backend, verás en los logs:
+```
+✅ Sistema de migraciones inicializado
+✅ Migraciones ejecutadas correctamente: 25 migraciones aplicadas
+```
+
+### 20.4. Agregar una Nueva Migración
+Si necesitas agregar una migración:
+1. Crear un archivo `.sql` en `migrations/`
+2. Nombrar con formato: `YYYYMMDD_descripcion.sql`
+3. Ejemplo: `20260202_add_new_table.sql`
+4. Reiniciar el backend
+5. El sistema detectará y aplicará la nueva migración automáticamente
+
+### 20.5. Tabla migration_records
+El sistema mantiene un registro de todas las migraciones ejecutadas:
+- **filename**: Nombre del archivo de migración
+- **executed_at**: Fecha y hora de ejecución
+- **success**: Si la migración fue exitosa
+
+---
+
 ## 📊 Resumen de Configuración
 
 ### Orden Recomendado de Configuración:
+1. ✅ **Usuarios** (vendedoras con horarios)
+2. ✅ **Categorías** y **Subcategorías**
+3. ✅ **Colores**
+4. ✅ **Tipos de Talle** y **Valores de Talle**
+5. ✅ **Proveedores**
+6. ✅ **Temporadas**
+7. ✅ **Price Tiers**
+8. ✅ **Cloudinary** (configurar en producción)
+9. ✅ **Productos** (con imágenes en Cloudinary)
+10. ✅ **Variantes** (por cada producto)
+11. ✅ **Stock** (por cada variante)
+12. ✅ **Home** (banners, videos, secciones)
+13. ✅ **FAQs**
+14. ✅ **Contacto**
+15. ✅ **Direcciones de clientes** (se gestionan automáticamente)
+16. ✅ **Remitos internos** (se generan automáticamente)
+
 ### Tabla de permisos por rol
 
 | Permiso / Función                | Admin | Encargado | Vendedor | Cliente |
@@ -1017,6 +1295,9 @@ Click en **"Guardar Configuración"**
 | Gestión de price tiers           |   ✔   |     ✔     |          |         |
 | Gestión de banners y home        |   ✔   |     ✔     |          |         |
 | Gestión de FAQs y contacto       |   ✔   |     ✔     |          |         |
+| Ver direcciones de clientes      |   ✔   |     ✔     |          | Propias |
+| Gestionar remitos internos       |   ✔   |     ✔     |          |         |
+| Configurar Cloudinary            |   ✔   |           |          |         |
 | Ver y gestionar sus ventas       |   ✔   |     ✔     |    ✔     |         |
 | Ver reportes y rankings          |   ✔   |     ✔     |    ✔     |         |
 | Asignarse pedidos                |   ✔   |     ✔     |    ✔     |         |
@@ -1074,6 +1355,13 @@ Click en **"Guardar Configuración"**
 - [ ] FAQs cargadas (mínimo 5)
 - [ ] Datos de contacto actualizados
 
+### Configuraciones Avanzadas
+- [ ] Cloudinary configurado en producción
+- [ ] Migraciones ejecutadas correctamente
+- [ ] Horarios de vendedores configurados (opcional)
+- [ ] Sistema de direcciones funcionando
+- [ ] Remitos internos verificados
+
 ---
 
 ## 🆘 Problemas Comunes y Soluciones
@@ -1105,6 +1393,22 @@ Click en **"Guardar Configuración"**
 - Verificar configuración de price tiers
 - Click en "Recalcular Todos los Productos"
 - Verificar que el producto tenga precio de costo
+
+### Las imágenes no se guardan o se pierden
+**Problema**: Las imágenes se pierden después de hacer deploy  
+**Solución**:
+- Verificar que Cloudinary esté configurado correctamente en Render
+- Revisar las variables de entorno: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+- Verificar en los logs del backend que diga "✅ Cloudinary inicializado correctamente"
+- Volver a subir las imágenes desde el admin después de configurar Cloudinary
+
+### Errores de migraciones en producción
+**Problema**: Tabla no existe (seasons, addresses, etc.)  
+**Solución**:
+- El sistema ahora ejecuta migraciones automáticamente al iniciar
+- Verificar en los logs que las migraciones se ejecutaron correctamente
+- Si persiste el error, revisar la tabla migration_records en la base de datos
+- Contactar al equipo de desarrollo si el problema continúa
 
 ---
 
