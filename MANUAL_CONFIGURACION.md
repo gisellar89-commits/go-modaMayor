@@ -253,7 +253,25 @@ Los colores se usan para generar variantes de productos (ej: Remera Azul, Remera
 1. Click en **"Configuración"** en el menú lateral
 2. Click en **"Colores"** o buscar en el menú de productos
 
-### 5.3. Crear Colores Básicos
+> **💡 Colores Precargados**: El sistema incluye 11 colores básicos automáticamente al iniciar por primera vez. Puedes editarlos, desactivarlos o agregar nuevos según necesites.
+
+### 5.3. Colores Incluidos por Defecto
+
+Al iniciar el sistema por primera vez, ya encontrarás estos colores disponibles:
+
+1. **Negro** - #000000
+2. **Blanco** - #FFFFFF
+3. **Gris** - #808080
+4. **Azul** - #0000FF
+5. **Azul Marino** - #000080
+6. **Rojo** - #FF0000
+7. **Verde** - #008000
+8. **Amarillo** - #FFFF00
+9. **Rosa** - #FFC0CB
+10. **Marrón** - #8B4513
+11. **Beige** - #F5F5DC
+
+### 5.4. Agregar Nuevos Colores
 Click en **"Nuevo Color"** y crear uno por uno:
 
 **Color 1**:
@@ -316,8 +334,19 @@ Nombre: Beige
 Código Hex: #F5F5DC
 ```
 
-### 5.4. Agregar Más Colores Según Necesidad
-Algunos adicionales útiles:
+### 5.4. Agregar Nuevos Colores
+
+Si necesitas agregar más colores personalizados:
+
+1. Click en **"Nuevo Color"**
+2. Completar el formulario:
+   ```
+   Nombre: Turquesa
+   Código Hex: #40E0D0
+   ```
+3. Click en **"Crear"**
+
+**Algunos colores adicionales útiles**:
 ```
 - Bordo (#800020)
 - Celeste (#87CEEB)
@@ -341,37 +370,46 @@ Son sistemas de medidas que agrupa talles (ej: XS-XL, Numérico 38-48)
 ### 6.2. Acceder
 1. **"Configuración"** → **"Tipos de Talle"**
 
-### 6.3. Crear Tipos Comunes
+> **💡 Tipos Precargados**: El sistema incluye 6 tipos de talles comunes con todos sus valores. Están listos para usar y puedes agregar más si necesitas.
 
-**Tipo 1: Letras Estándar**
-```
-Nombre: Letras Estándar
-Descripción: XS, S, M, L, XL, XXL
-```
+### 6.3. Tipos de Talle Incluidos por Defecto
 
-**Tipo 2: Numérico Femenino**
-```
-Nombre: Numérico Femenino
-Descripción: Talles 36 a 50
-```
+**1. Talle único / sin variantes**
+- Para productos sin variaciones de talle
+- Valor incluido: Único
 
-**Tipo 3: Numérico Masculino**
-```
-Nombre: Numérico Masculino
-Descripción: Talles 38 a 52
-```
+**2. Letras Estándar**
+- Descripción: XS, S, M, L, XL, XXL
+- Valores incluidos: XS, S, M, L, XL, XXL (ordenados del 1 al 6)
 
-**Tipo 4: Talle Único**
-```
-Nombre: Talle Único
-Descripción: Un solo talle
-```
+**3. Numérico Femenino**
+- Descripción: Talles 36 a 50
+- Valores incluidos: 36, 38, 40, 42, 44, 46, 48, 50
 
-**Tipo 5: Numérico Calzado**
-```
-Nombre: Numérico Calzado
-Descripción: Talles 35 a 45
-```
+**4. Numérico Masculino**
+- Descripción: Talles 38 a 52
+- Valores incluidos: 38, 40, 42, 44, 46, 48, 50, 52
+
+**5. Numérico Calzado**
+- Descripción: Talles 35 a 45
+- Valores incluidos: 35 al 45 (del 1 al 11)
+
+**6. Talle de Jeans**
+- Descripción: Talles 24 a 38
+- Valores incluidos: 24, 26, 28, 30, 32, 34, 36, 38
+
+### 6.4. Agregar Nuevos Tipos de Talle
+
+Si necesitas crear un tipo de talle personalizado:
+
+1. Click **"Nuevo Tipo de Talle"**
+2. Completar:
+   ```
+   Nombre: Talles Especiales
+   Descripción: Talles no estándar
+   ☐ Talle único (sin variantes) - dejar sin marcar
+   ```
+3. **"Crear"**
 
 ---
 
@@ -380,65 +418,26 @@ Descripción: Talles 35 a 45
 ### 7.1. ¿Qué son?
 Son los talles específicos dentro de cada tipo (ej: S, M, L dentro de "Letras Estándar")
 
+> **💡 Valores Precargados**: Todos los tipos de talle vienen con sus valores correspondientes ya cargados. Solo necesitas agregar valores si creas nuevos tipos personalizados.
+
 ### 7.2. Acceder
-1. **"Configuración"** → **"Valores de Talle"**
+1. **"Configuración"** → **"Tipos de Talle"**
+2. Click en un tipo para ver sus valores
+3. O ir a **"Valores de Talle"** para ver todos
 
-### 7.3. Valores para "Letras Estándar"
-Asociar cada valor al tipo "Letras Estándar":
+### 7.3. Agregar Valores a Tipos Personalizados
 
-```
-1. XS  (Orden: 1)
-2. S   (Orden: 2)
-3. M   (Orden: 3)
-4. L   (Orden: 4)
-5. XL  (Orden: 5)
-6. XXL (Orden: 6)
-```
+Si creaste un tipo de talle personalizado y necesitas agregarle valores:
 
-**Cómo crear cada uno**:
 1. Click **"Nuevo Valor de Talle"**
 2. Completar:
    ```
-   Valor: M
-   Tipo de Talle: Letras Estándar (seleccionar del dropdown)
-   Orden: 3
+   Valor: A
+   Tipo de Talle: [Seleccionar tu tipo personalizado]
+   Orden: 1
    ```
-3. Crear
-
-### 7.4. Valores para "Numérico Femenino"
-```
-36 (Orden: 1)
-38 (Orden: 2)
-40 (Orden: 3)
-42 (Orden: 4)
-44 (Orden: 5)
-46 (Orden: 6)
-48 (Orden: 7)
-50 (Orden: 8)
-```
-
-### 7.5. Valores para "Numérico Masculino"
-```
-38 (Orden: 1)
-40 (Orden: 2)
-42 (Orden: 3)
-44 (Orden: 4)
-46 (Orden: 5)
-48 (Orden: 6)
-50 (Orden: 7)
-52 (Orden: 8)
-```
-
-### 7.6. Valores para "Talle Único"
-```
-Único (Orden: 1)
-```
-
-### 7.7. Valores para "Numérico Calzado"
-```
-35 - 36 - 37 - 38 - 39 - 40 - 41 - 42 - 43 - 44 - 45
-(Orden del 1 al 11)
-```
+3. **"Crear"**
+4. Repetir para cada valor (B, C, etc.)
 
 ---
 
