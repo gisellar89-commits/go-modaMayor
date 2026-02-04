@@ -283,7 +283,7 @@ export default function ConfiguracionContactoPage() {
                   
                   {addresses.length === 0 ? (
                     <p className="text-sm text-gray-500 italic">
-                      No hay direcciones agregadas. Haz clic en "+ Agregar dirección"
+                      No hay direcciones agregadas. Haz clic en &quot;+ Agregar dirección&quot;
                     </p>
                   ) : (
                     <div className="space-y-3">

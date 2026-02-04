@@ -38,7 +38,7 @@ export default function Footer() {
     // Cargar configuración de contacto
     fetch(`${API_URL}/settings/contact`)
       .then(res => res.ok ? res.json() : {})
-      .then(data => {
+      .then((data: any) => {
         if (data.settings) {
           setContactSettings(data.settings);
           setAddresses(data.addresses || []);

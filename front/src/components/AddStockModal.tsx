@@ -51,7 +51,7 @@ export default function AddStockModal({ open, onClose, productId, onSaved }: Pro
 
   useEffect(() => {
     // Inicializar con una fila vacía
-    setRows([{ location: locations[0] ?? "", quantity: 0 }]);
+    setRows([{ location: locations[0]?.code ?? "", quantity: 0 }]);
   }, [open, locations]);
 
   useEffect(() => {
