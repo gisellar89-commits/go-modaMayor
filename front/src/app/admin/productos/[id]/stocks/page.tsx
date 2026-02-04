@@ -105,11 +105,6 @@ export default function ProductStocksPage({ params }: { params: any }) {
     rows.forEach((r, i) => { if (i !== excludeIdx) used.add(`${r.location}::${r.variant_id ?? "_product_"}`) });
     return used;
   }
-  const addRow = () => {
-    const next = findAvailableCombination();
-    if (!next) { toast.error?.("No hay más combinaciones disponibles"); return; }
-    setRows([...rows, { ...next, quantity: 0 }]);
-  }
   const updateRow = (idx: number, patch: Partial<{ location: string; variant_id?: number; quantity: number }>) => setRows(r => r.map((v,i) => i===idx ? { ...v, ...patch } : v));
   const removeRow = (idx: number) => setRows(r => r.filter((_,i) => i!==idx));
 
