@@ -8,6 +8,7 @@ import (
 	"go-modaMayor/internal/category"
 	"go-modaMayor/internal/faq"
 	"go-modaMayor/internal/kit"
+	"go-modaMayor/internal/location"
 	"go-modaMayor/internal/notification"
 	"go-modaMayor/internal/order"
 	"go-modaMayor/internal/product"
@@ -278,6 +279,12 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// Contact settings (configuración de contacto)
 	r.GET("/settings/contact", handler.GetContactSettings)
 	r.PUT("/settings/contact", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.UpdateContactSettings)
+	
+	// Direcciones de contacto
+	r.GET("/settings/contact/addresses", handler.GetContactAddresses)
+	r.POST("/settings/contact/addresses", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.CreateContactAddress)
+	r.PUT("/settings/contact/addresses/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.UpdateContactAddress)
+	r.DELETE("/settings/contact/addresses/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.DeleteContactAddress)
 
 	// Remitos internos (traslados de stock entre ubicaciones)
 	// Solo admin y encargado pueden ver y confirmar remitos
@@ -286,6 +293,16 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/remitos-internos/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.GetRemitoInterno)
 	r.POST("/remitos-internos/:id/confirmar", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), remito.ConfirmarRecepcionRemito)
 	r.GET("/carts/:cart_id/remitos-internos", user.AuthMiddleware(), user.RequireAnyRole("admin", "vendedora", "encargado"), remito.GetRemitosByCart)
+
+	// Locations (ubicaciones de stock)
+	// Ruta pública para listar ubicaciones activas
+	r.GET("/locations", location.ListLocations)
+	// Rutas de administración (solo admin)
+	r.GET("/admin/locations", user.AuthMiddleware(), user.RequireRole("admin"), location.ListLocations)
+	r.GET("/admin/locations/:id", user.AuthMiddleware(), user.RequireRole("admin"), location.GetLocation)
+	r.POST("/admin/locations", user.AuthMiddleware(), user.RequireRole("admin"), location.CreateLocation)
+	r.PUT("/admin/locations/:id", user.AuthMiddleware(), user.RequireRole("admin"), location.UpdateLocation)
+	r.DELETE("/admin/locations/:id", user.AuthMiddleware(), user.RequireRole("admin"), location.DeleteLocation)
 
 	return r
 }

@@ -14,13 +14,24 @@ func GetContactSettings(c *gin.Context) {
 	var cs settings.ContactSettings
 	if err := config.DB.First(&cs).Error; err != nil {
 		// Si no existe, devolver configuración por defecto
-		c.JSON(http.StatusOK, settings.ContactSettings{
-			WhatsAppNumber:  "5491123456789",
-			WhatsAppMessage: "¡Hola! Tengo una consulta sobre Moda x Mayor",
+		c.JSON(http.StatusOK, gin.H{
+			"settings": settings.ContactSettings{
+				WhatsAppNumber:  "5491123456789",
+				WhatsAppMessage: "¡Hola! Tengo una consulta sobre Moda x Mayor",
+			},
+			"addresses": []settings.ContactAddress{},
 		})
 		return
 	}
-	c.JSON(http.StatusOK, cs)
+
+	// Obtener direcciones
+	var addresses []settings.ContactAddress
+	config.DB.Order("display_order ASC, id ASC").Find(&addresses)
+
+	c.JSON(http.StatusOK, gin.H{
+		"settings":  cs,
+		"addresses": addresses,
+	})
 }
 
 // PUT /settings/contact (admin/encargado)
@@ -78,4 +89,66 @@ func UpdateContactSettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, cs)
+}
+
+// GET /settings/contact/addresses
+func GetContactAddresses(c *gin.Context) {
+	var addresses []settings.ContactAddress
+	config.DB.Order("display_order ASC, id ASC").Find(&addresses)
+	c.JSON(http.StatusOK, addresses)
+}
+
+// POST /settings/contact/addresses
+func CreateContactAddress(c *gin.Context) {
+	var input settings.ContactAddress
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := config.DB.Create(&input).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, input)
+}
+
+// PUT /settings/contact/addresses/:id
+func UpdateContactAddress(c *gin.Context) {
+	id := c.Param("id")
+	var addr settings.ContactAddress
+	
+	if err := config.DB.First(&addr, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Dirección no encontrada"})
+		return
+	}
+
+	var input settings.ContactAddress
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	addr.Name = input.Name
+	addr.Address = input.Address
+	addr.BusinessHours = input.BusinessHours
+	addr.DisplayOrder = input.DisplayOrder
+
+	if err := config.DB.Save(&addr).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, addr)
+}
+
+// DELETE /settings/contact/addresses/:id
+func DeleteContactAddress(c *gin.Context) {
+	id := c.Param("id")
+	if err := config.DB.Delete(&settings.ContactAddress{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Dirección eliminada"})
 }

@@ -55,7 +55,7 @@ func RunSQLMigrations(db *gorm.DB) error {
 	pendingCount := 0
 	for _, filename := range sqlFiles {
 		if appliedMap[filename] {
-			log.Printf("✓ Migración ya aplicada: %s", filename)
+			// No mostrar log para migraciones ya aplicadas
 			continue
 		}
 

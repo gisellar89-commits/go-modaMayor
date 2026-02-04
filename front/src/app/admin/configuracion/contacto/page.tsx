@@ -14,6 +14,14 @@ interface ContactSettings {
   twitter_url: string;
 }
 
+interface ContactAddress {
+  id?: number;
+  name: string;
+  address: string;
+  business_hours: string;
+  display_order: number;
+}
+
 export default function ConfiguracionContactoPage() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
   const [settings, setSettings] = useState<ContactSettings>({
@@ -27,24 +35,40 @@ export default function ConfiguracionContactoPage() {
     instagram_url: "",
     twitter_url: "",
   });
+  const [addresses, setAddresses] = useState<ContactAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{type: "success" | "error", text: string} | null>(null);
 
   useEffect(() => {
     fetchSettings();
+    fetchAddresses();
   }, []);
 
   const fetchSettings = async () => {
     try {
       const res = await fetch(`${API_URL}/settings/contact`);
       const data = await res.json();
-      setSettings(data);
+      if (data.settings) {
+        setSettings(data.settings);
+      } else {
+        setSettings(data);
+      }
     } catch (error) {
       console.error("Error al cargar configuración:", error);
       setMessage({type: "error", text: "Error al cargar la configuración"});
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAddresses = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings/contact/addresses`);
+      const data = await res.json();
+      setAddresses(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error al cargar direcciones:", error);
     }
   };
 
@@ -60,6 +84,8 @@ export default function ConfiguracionContactoPage() {
 
     try {
       const token = localStorage.getItem("token");
+      
+      // 1. Guardar configuración general
       const res = await fetch(`${API_URL}/settings/contact`, {
         method: "PUT",
         headers: {
@@ -70,15 +96,48 @@ export default function ConfiguracionContactoPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Error al guardar");
+        throw new Error("Error al guardar configuración");
       }
 
       const data = await res.json();
       setSettings(data);
+
+      // 2. Guardar direcciones (crear nuevas o actualizar existentes)
+      for (const addr of addresses) {
+        if (addr.id) {
+          // Actualizar dirección existente
+          await fetch(`${API_URL}/settings/contact/addresses/${addr.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(addr),
+          });
+        } else {
+          // Crear nueva dirección
+          await fetch(`${API_URL}/settings/contact/addresses`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(addr),
+          });
+        }
+      }
+
+      await fetchAddresses();
       setMessage({type: "success", text: "Configuración guardada correctamente"});
+      
+      // Scroll hacia arriba para ver el mensaje
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Error al guardar:", error);
       setMessage({type: "error", text: "Error al guardar la configuración"});
+      
+      // Scroll hacia arriba para ver el mensaje de error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSaving(false);
     }
@@ -198,18 +257,103 @@ export default function ConfiguracionContactoPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                   />
                 </div>
+                
+                {/* Direcciones múltiples */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Dirección
-                  </label>
-                  <textarea
-                    name="address"
-                    value={settings.address}
-                    onChange={handleChange}
-                    rows={2}
-                    placeholder="Av. Corrientes 1234, CABA, Argentina"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
+                  <div className="flex justify-between items-center mb-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Direcciones
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAddr: ContactAddress = {
+                          name: `Dirección ${addresses.length + 1}`,
+                          address: "",
+                          business_hours: "",
+                          display_order: addresses.length
+                        };
+                        setAddresses([...addresses, newAddr]);
+                      }}
+                      className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+                    >
+                      + Agregar dirección
+                    </button>
+                  </div>
+                  
+                  {addresses.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">
+                      No hay direcciones agregadas. Haz clic en "+ Agregar dirección"
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {addresses.map((addr, index) => (
+                        <div key={addr.id || `new-${index}`} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-start mb-3">
+                            <input
+                              type="text"
+                              value={addr.name}
+                              onChange={(e) => {
+                                const updated = [...addresses];
+                                updated[index].name = e.target.value;
+                                setAddresses(updated);
+                              }}
+                              placeholder="Nombre (ej: Sucursal Centro)"
+                              className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm("¿Eliminar esta dirección?")) return;
+                                
+                                // Si tiene ID, eliminarla del servidor
+                                if (addr.id) {
+                                  const token = localStorage.getItem("token");
+                                  try {
+                                    await fetch(`${API_URL}/settings/contact/addresses/${addr.id}`, {
+                                      method: "DELETE",
+                                      headers: {"Authorization": `Bearer ${token}`},
+                                    });
+                                  } catch (error) {
+                                    console.error("Error:", error);
+                                  }
+                                }
+                                
+                                // Eliminar del estado local
+                                const updated = addresses.filter((_, i) => i !== index);
+                                setAddresses(updated);
+                              }}
+                              className="ml-2 text-red-500 hover:text-red-700 text-sm px-2"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <textarea
+                            value={addr.address}
+                            onChange={(e) => {
+                              const updated = [...addresses];
+                              updated[index].address = e.target.value;
+                              setAddresses(updated);
+                            }}
+                            placeholder="Dirección completa"
+                            rows={2}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                          />
+                          <input
+                            type="text"
+                            value={addr.business_hours}
+                            onChange={(e) => {
+                              const updated = [...addresses];
+                              updated[index].business_hours = e.target.value;
+                              setAddresses(updated);
+                            }}
+                            placeholder="Horario (ej: Lun-Vie 9-18hs)"
+                            className="w-full px-3 py-2 mt-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-pink-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -251,7 +395,7 @@ export default function ConfiguracionContactoPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Twitter/X URL
+                    Twitter URL
                   </label>
                   <input
                     type="url"
@@ -265,21 +409,21 @@ export default function ConfiguracionContactoPage() {
               </div>
             </div>
 
-            {/* Botón guardar */}
+            {/* Botón Guardar */}
             <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={saving}
-                className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${
+                className={`px-6 py-3 rounded-lg font-medium transition-all ${
                   saving
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-yellow-500 via-pink-500 to-yellow-500 hover:shadow-lg hover:scale-105"
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-yellow-500 via-pink-500 to-yellow-500 hover:shadow-lg hover:shadow-pink-500/50 text-white'
                 }`}
               >
-                {saving ? "Guardando..." : "Guardar Configuración"}
+                {saving ? 'Guardando...' : 'Guardar Configuración'}
               </button>
             </div>
           </form>
         </div>
-  );
-}
+      );
+    }

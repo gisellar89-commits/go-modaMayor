@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 type Variant = { ID?: number; id?: number; color?: string; size?: string };
 type LocationStock = { ID?: number; id?: number; product_id?: number; variant_id?: number | null; location?: string; stock?: number };
+type Location = { ID: number; code: string; name: string; active: boolean };
 
 export default function ProductStocksPage({ params }: { params: any }) {
   const router = useRouter();
@@ -13,9 +14,13 @@ export default function ProductStocksPage({ params }: { params: any }) {
   const [product, setProduct] = useState<any | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [stocks, setStocks] = useState<LocationStock[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(true);
   const [rows, setRows] = useState<Array<{ location: string; variant_id?: number; quantity: number }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   const fmt = (v: any) => {
     if (v === null || v === undefined) return null;
@@ -25,9 +30,19 @@ export default function ProductStocksPage({ params }: { params: any }) {
     return String(v);
   }
 
+  // Cargar ubicaciones activas
+  useEffect(() => {
+    setLoadingLocations(true);
+    fetch(`${API_URL}/locations?active=true`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setLocations(Array.isArray(data) ? data : []))
+      .catch((e) => console.error("Error loading locations:", e))
+      .finally(() => setLoadingLocations(false));
+  }, []);
+
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/products/${productId}`, {
+    fetch(`${API_URL}/products/${productId}`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     })
       .then((r) => r.json())
@@ -39,8 +54,9 @@ export default function ProductStocksPage({ params }: { params: any }) {
       .catch((e) => setError(String(e)));
   }, [productId]);
 
-  const DEFAULT_LOCATIONS = (process.env.NEXT_PUBLIC_LOCATIONS || "deposito,mendoza,salta").split(",").map(s => s.trim()).filter(Boolean);
   const findAvailableCombination = () => {
+    if (locations.length === 0) return null;
+    
     const used = new Set<string>();
     // mark existing stocks
     stocks.forEach(s => used.add(`${s.location}::${s.variant_id ?? "_product_"}`));
@@ -49,23 +65,23 @@ export default function ProductStocksPage({ params }: { params: any }) {
 
     // if there are variants, try combinations location x variant
     if (variants.length > 0) {
-      for (const loc of DEFAULT_LOCATIONS) {
+      for (const loc of locations) {
         for (const v of variants) {
           const vid = (v.ID ?? v.id) as number;
-          const key = `${loc}::${vid}`;
-          if (!used.has(key)) return { location: loc, variant_id: vid };
+          const key = `${loc.code}::${vid}`;
+          if (!used.has(key)) return { location: loc.code, variant_id: vid };
         }
       }
       // also allow product-level (no variant) if free
-      for (const loc of DEFAULT_LOCATIONS) {
-        const key = `${loc}::_product_`;
-        if (!used.has(key)) return { location: loc };
+      for (const loc of locations) {
+        const key = `${loc.code}::_product_`;
+        if (!used.has(key)) return { location: loc.code };
       }
     } else {
       // no variants: only product-level rows
-      for (const loc of DEFAULT_LOCATIONS) {
-        const key = `${loc}::_product_`;
-        if (!used.has(key)) return { location: loc };
+      for (const loc of locations) {
+        const key = `${loc.code}::_product_`;
+        if (!used.has(key)) return { location: loc.code };
       }
     }
     return null;
@@ -88,6 +104,11 @@ export default function ProductStocksPage({ params }: { params: any }) {
     stocks.forEach(s => used.add(`${s.location}::${s.variant_id ?? "_product_"}`));
     rows.forEach((r, i) => { if (i !== excludeIdx) used.add(`${r.location}::${r.variant_id ?? "_product_"}`) });
     return used;
+  }
+  const addRow = () => {
+    const next = findAvailableCombination();
+    if (!next) { toast.error?.("No hay más combinaciones disponibles"); return; }
+    setRows([...rows, { ...next, quantity: 0 }]);
   }
   const updateRow = (idx: number, patch: Partial<{ location: string; variant_id?: number; quantity: number }>) => setRows(r => r.map((v,i) => i===idx ? { ...v, ...patch } : v));
   const removeRow = (idx: number) => setRows(r => r.filter((_,i) => i!==idx));
@@ -211,36 +232,44 @@ export default function ProductStocksPage({ params }: { params: any }) {
 
       <section>
         <h2 className="font-semibold mb-2">Agregar stocks</h2>
-        {rows.map((r, idx) => (
-          <div key={idx} className="flex gap-2 items-center mb-2">
-            <select className="border px-2 py-1" value={r.location} onChange={(e) => updateRow(idx, { location: e.target.value })}>
-              {DEFAULT_LOCATIONS.map((loc) => {
-                const used = usedSetExcluding(idx);
-                // If variant selected, check specific combo
-                const variantPart = r.variant_id ? `::${r.variant_id}` : "::_product_";
-                const disabled = used.has(`${loc}${variantPart}`) && !(r.location === loc);
-                return <option key={loc} value={loc} disabled={disabled}>{loc}</option>
-              })}
-            </select>
-            <select className="border px-2 py-1 w-48" value={r.variant_id ?? ""} onChange={(e) => updateRow(idx, { variant_id: e.target.value ? Number(e.target.value) : undefined })}>
-              <option value="" disabled={usedSetExcluding(idx).has(`${r.location}::_product_`)}>Producto (sin variante)</option>
-              {variants.map(v => {
-                const vid = (v.ID ?? v.id) as number;
-                const label = `${v.size ?? ""}${v.size && v.color ? " - " : ""}${v.color ?? ""}${(v as any).sku ? ` (${(v as any).sku})` : ""}`.trim();
-                const disabled = usedSetExcluding(idx).has(`${r.location}::${vid}`) && r.variant_id !== vid;
-                return <option key={vid} value={vid} disabled={disabled}>{label || `Variante ${vid}`}</option>;
-              })}
-            </select>
-            <input className="border px-2 py-1 w-32" type="number" min={0} value={r.quantity} onChange={(e) => updateRow(idx, { quantity: Number(e.target.value) })} />
-            <button className="text-red-600" onClick={() => removeRow(idx)}>Eliminar</button>
-          </div>
-        ))}
-        <div className="flex gap-2 mt-2">
-          <button className="bg-gray-200 px-3 py-1 rounded" onClick={addRow}>Añadir fila</button>
-          <div className="flex-1" />
-          <button className="bg-white px-3 py-1 rounded border" onClick={() => router.back()}>Cancelar</button>
-          <button className="bg-blue-600 text-white px-3 py-1 rounded" onClick={submit} disabled={loading}>{loading ? 'Guardando...' : 'Guardar'}</button>
-        </div>
+        {loadingLocations ? (
+          <div className="text-sm text-gray-600 mb-4">Cargando ubicaciones...</div>
+        ) : locations.length === 0 ? (
+          <div className="text-sm text-gray-600 mb-4">No hay ubicaciones activas disponibles. Por favor, cree ubicaciones en la sección de administración.</div>
+        ) : (
+          <>
+            {rows.map((r, idx) => (
+              <div key={idx} className="flex gap-2 items-center mb-2">
+                <select className="border px-2 py-1" value={r.location} onChange={(e) => updateRow(idx, { location: e.target.value })}>
+                  {locations.map((loc) => {
+                    const used = usedSetExcluding(idx);
+                    // If variant selected, check specific combo
+                    const variantPart = r.variant_id ? `::${r.variant_id}` : "::_product_";
+                    const disabled = used.has(`${loc.code}${variantPart}`) && !(r.location === loc.code);
+                    return <option key={loc.code} value={loc.code} disabled={disabled}>{loc.name}</option>
+                  })}
+                </select>
+                <select className="border px-2 py-1 w-48" value={r.variant_id ?? ""} onChange={(e) => updateRow(idx, { variant_id: e.target.value ? Number(e.target.value) : undefined })}>
+                  <option value="" disabled={usedSetExcluding(idx).has(`${r.location}::_product_`)}>Producto (sin variante)</option>
+                  {variants.map(v => {
+                    const vid = (v.ID ?? v.id) as number;
+                    const label = `${v.size ?? ""}${v.size && v.color ? " - " : ""}${v.color ?? ""}${(v as any).sku ? ` (${(v as any).sku})` : ""}`.trim();
+                    const disabled = usedSetExcluding(idx).has(`${r.location}::${vid}`) && r.variant_id !== vid;
+                    return <option key={vid} value={vid} disabled={disabled}>{label || `Variante ${vid}`}</option>;
+                  })}
+                </select>
+                <input className="border px-2 py-1 w-32" type="number" min={0} value={r.quantity} onChange={(e) => updateRow(idx, { quantity: Number(e.target.value) })} />
+                <button className="text-red-600" onClick={() => removeRow(idx)}>Eliminar</button>
+              </div>
+            ))}
+            <div className="flex gap-2 mt-2">
+              <button className="bg-gray-200 px-3 py-1 rounded" onClick={addRow} disabled={locations.length === 0}>Añadir fila</button>
+              <div className="flex-1" />
+              <button className="bg-white px-3 py-1 rounded border" onClick={() => router.back()}>Cancelar</button>
+              <button className="bg-blue-600 text-white px-3 py-1 rounded" onClick={submit} disabled={loading || locations.length === 0}>{loading ? 'Guardando...' : 'Guardar'}</button>
+            </div>
+          </>
+        )}
         {error && <div className="text-red-500 mt-2">{error}</div>}
       </section>
     </main>

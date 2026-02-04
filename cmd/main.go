@@ -15,7 +15,7 @@ import (
 	"go-modaMayor/internal/notification"
 	"go-modaMayor/internal/order"
 	"go-modaMayor/internal/product"
-	"go-modaMayor/internal/remito"
+	// "go-modaMayor/internal/remito" // Comentado mientras no se use
 	"go-modaMayor/internal/settings"
 	"go-modaMayor/internal/user"
 	"go-modaMayor/routes"
@@ -35,10 +35,12 @@ func main() {
 	// 2. Conectar y obtener la instancia de GORM
 	db := config.ConnectDatabase()
 
-	// 2.1. Ejecutar migraciones SQL automáticamente
+	// 2.1. Ejecutar migraciones SQL automáticamente solo si AUTO_MIGRATE=true
 	// Esto ejecutará todos los archivos .sql en migrations/ que no se hayan ejecutado antes
-	if err := config.RunSQLMigrations(db); err != nil {
-		panic("Error ejecutando migraciones SQL: " + err.Error())
+	if os.Getenv("AUTO_MIGRATE") == "true" {
+		if err := config.RunSQLMigrations(db); err != nil {
+			panic("Error ejecutando migraciones SQL: " + err.Error())
+		}
 	}
 
 	// 3. Ejecutar migración de modelos sólo si AUTO_MIGRATE=true
@@ -133,10 +135,10 @@ func main() {
 		if err := db.AutoMigrate(&notification.Notification{}); err != nil {
 			panic("Falló migración Notification: " + err.Error())
 		}
-		// Remitos internos migration
-		if err := db.AutoMigrate(&remito.RemitoInterno{}, &remito.RemitoInternoItem{}); err != nil {
-			panic("Falló migración RemitoInterno: " + err.Error())
-		}
+		// Remitos internos migration - Comentado porque la tabla ya existe y causa conflictos
+		// if err := db.AutoMigrate(&remito.RemitoInterno{}, &remito.RemitoInternoItem{}); err != nil {
+		// 	panic("Falló migración RemitoInterno: " + err.Error())
+		// }
 		// FAQs migration
 		if err := db.AutoMigrate(&faq.FAQ{}); err != nil {
 			panic("Falló migración FAQ: " + err.Error())

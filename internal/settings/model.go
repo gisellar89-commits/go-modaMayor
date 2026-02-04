@@ -109,12 +109,21 @@ type HomeSectionConfig struct {
 // ContactSettings representa las configuraciones de contacto del sitio
 type ContactSettings struct {
 	gorm.Model
-	WhatsAppNumber  string `json:"whatsapp_number" gorm:"type:varchar(20)"` // Número de WhatsApp (formato: 5491123456789)
-	WhatsAppMessage string `json:"whatsapp_message" gorm:"type:text"`       // Mensaje predeterminado
-	Email           string `json:"email" gorm:"type:varchar(255)"`          // Email de contacto
-	Phone           string `json:"phone" gorm:"type:varchar(20)"`           // Teléfono de contacto
-	Address         string `json:"address" gorm:"type:text"`                // Dirección física
-	FacebookURL     string `json:"facebook_url" gorm:"type:text"`           // URL de Facebook
-	InstagramURL    string `json:"instagram_url" gorm:"type:text"`          // URL de Instagram
-	TwitterURL      string `json:"twitter_url" gorm:"type:text"`            // URL de Twitter/X
+	WhatsAppNumber  string `json:"whatsapp_number" gorm:"column:whatsapp_number;type:varchar(20)"` // Número de WhatsApp (formato: 5491123456789)
+	WhatsAppMessage string `json:"whatsapp_message" gorm:"column:whatsapp_message;type:text"`      // Mensaje predeterminado
+	Email           string `json:"email" gorm:"type:varchar(255)"`                                  // Email de contacto
+	Phone           string `json:"phone" gorm:"type:varchar(20)"`                                   // Teléfono de contacto
+	Address         string `json:"address" gorm:"type:text"`                                        // Dirección física (deprecated, usar ContactAddress)
+	FacebookURL     string `json:"facebook_url" gorm:"column:facebook_url;type:text"`               // URL de Facebook
+	InstagramURL    string `json:"instagram_url" gorm:"column:instagram_url;type:text"`             // URL de Instagram
+	TwitterURL      string `json:"twitter_url" gorm:"column:twitter_url;type:text"`                 // URL de Twitter/X
+}
+
+// ContactAddress representa una dirección física del negocio
+type ContactAddress struct {
+	gorm.Model
+	Name          string `json:"name" gorm:"type:varchar(100);not null"`          // Nombre del local (ej: "Sucursal Centro")
+	Address       string `json:"address" gorm:"type:text;not null"`               // Dirección completa
+	BusinessHours string `json:"business_hours" gorm:"type:varchar(255)"`         // Horario de atención
+	DisplayOrder  int    `json:"display_order" gorm:"default:0"`                  // Orden de visualización
 }

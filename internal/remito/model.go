@@ -8,7 +8,7 @@ import (
 
 type RemitoInterno struct {
 	ID                 uint           `json:"id" gorm:"primaryKey"`
-	Numero             string         `json:"numero" gorm:"uniqueIndex;not null"`
+	Numero             string         `json:"numero" gorm:"not null"`
 	CartID             *uint          `json:"cart_id"`
 	OrderID            *uint          `json:"order_id"`
 	UbicacionOrigen    string         `json:"ubicacion_origen" gorm:"not null"`
