@@ -1,4 +1,3 @@
-
 package routes
 
 import (
@@ -13,6 +12,7 @@ import (
 	"go-modaMayor/internal/order"
 	"go-modaMayor/internal/product"
 	"go-modaMayor/internal/remito"
+	"go-modaMayor/internal/settings"
 	"go-modaMayor/internal/settings/handler"
 	"go-modaMayor/internal/user"
 
@@ -83,6 +83,8 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	// Usuarios
 	r.POST("/register", user.Register)
 	r.POST("/login", user.Login)
+	r.POST("/logout", user.AuthMiddleware(), user.Logout)
+	r.POST("/user/activity", user.AuthMiddleware(), user.UpdateActivity)
 	r.POST("/forgot-password", user.ForgotPassword)
 	r.POST("/reset-password", user.ResetPassword)
 
@@ -183,6 +185,8 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/cart/seller/debug", user.AuthMiddleware(), user.RequireRole("vendedor"), cart.GetCartsForSellerDebug)
 	// Obtener carrito por ID (admin/owner/vendedor asignado)
 	r.GET("/cart/:id", user.AuthMiddleware(), cart.GetCartByID)
+	// Verificar disponibilidad de stock antes de agregar al carrito
+	r.GET("/cart/check-availability", cart.CheckStockAvailabilityEndpoint)
 	// Permitir agregar al carrito sin autenticación (opcional, manejado por frontend)
 	r.POST("/cart/add", user.OptionalAuthMiddleware(), cart.AddToCart)
 	r.PUT("/cart/update/:product_id", user.AuthMiddleware(), cart.UpdateCartItem)
@@ -246,6 +250,13 @@ func SetupRouter(db *gorm.DB) *gin.Engine {
 	r.GET("/settings/home_section_configs/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.GetHomeSectionConfig)
 	r.PUT("/settings/home_section_configs/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.UpdateHomeSectionConfig)
 	r.PUT("/settings/home_section_configs/reorder", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.ReorderHomeSectionConfigs)
+
+	// Store Hours & Holidays - Admin only
+	r.GET("/settings/store-hours", user.AuthMiddleware(), user.RequireRole("admin"), settings.GetStoreHours)
+	r.PUT("/settings/store-hours", user.AuthMiddleware(), user.RequireRole("admin"), settings.UpdateStoreHours)
+	r.GET("/settings/holidays", user.AuthMiddleware(), user.RequireRole("admin"), settings.ListHolidays)
+	r.POST("/settings/holidays", user.AuthMiddleware(), user.RequireRole("admin"), settings.CreateHoliday)
+	r.DELETE("/settings/holidays/:id", user.AuthMiddleware(), user.RequireRole("admin"), settings.DeleteHoliday)
 	r.POST("/settings/home_section_configs", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.CreateHomeSectionConfig)
 	r.DELETE("/settings/home_section_configs/:id", user.AuthMiddleware(), user.RequireAnyRole("admin", "encargado"), handler.DeleteHomeSectionConfig)
 

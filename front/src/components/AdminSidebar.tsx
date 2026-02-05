@@ -76,6 +76,11 @@ export default function AdminSidebar() {
     settingsMenu.push({ key: "banners", label: "Banners", href: "/admin/banners", icon: <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="2" /><path d="M8 11l2 2 3-3 4 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg> });
     settingsMenu.push({ key: "videos", label: "Videos", href: "/admin/videos", icon: <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M23 7l-7 5 7 5V7z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><rect x="1" y="5" width="15" height="14" rx="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> });
   }
+  
+  // Horarios laborales (solo admin)
+  if (role === "admin") {
+    settingsMenu.push({ key: "horarios", label: "Horarios Laborales", href: "/admin/horarios", icon: <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> });
+  }
 
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin" || pathname === "/admin/";

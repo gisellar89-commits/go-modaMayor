@@ -1,9 +1,12 @@
 "use client";
+import { useRouter } from "next/navigation";
+import { logout } from "@/hooks/useActivityTracking";
 
 export default function LogoutButton() {
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout(router);
   };
 
   return (

@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
@@ -28,7 +29,10 @@ func ConnectDatabase() *gorm.DB {
 		os.Getenv("DB_SSLMODE"),
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Configurar logger para ignorar errores "record not found"
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		log.Fatal("Error conectando a la base de datos:", err)
 	}
@@ -45,7 +49,8 @@ func ConnectDatabase() *gorm.DB {
 		db.AutoMigrate(&address.Address{})
 	}
 
-	// ... existing code ...
+	// Inicializar el settings package con la instancia de DB
+	settings.SetDB(db)
 
 	return db
 }

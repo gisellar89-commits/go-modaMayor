@@ -24,6 +24,17 @@ export default function DetalleProductoPage() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   // Carousel state: index into galleryImages
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  
+  // Estado para disponibilidad de stock
+  const [stockAvailability, setStockAvailability] = useState<{
+    stock_disponible_deposito: number;
+    cantidad_solicitada: number;
+    suficiente_en_deposito: boolean;
+    disponible_otras_ubicaciones: boolean;
+    mensaje: string;
+    accion: "agregar" | "consultar" | "sin_stock";
+  } | null>(null);
+  const [checkingStock, setCheckingStock] = useState(false);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') ?? undefined : undefined;
@@ -72,6 +83,36 @@ export default function DetalleProductoPage() {
   }, [addStatus]);
 
   const varianteSeleccionada = (product?.variants || []).find((v: any) => (!selectedSize || v.size === selectedSize) && (!selectedColor || v.color === selectedColor));
+
+  // Verificar disponibilidad de stock cuando cambien cantidad o variante
+  useEffect(() => {
+    if (!product || !varianteSeleccionada) {
+      setStockAvailability(null);
+      return;
+    }
+    
+    const variantId = varianteSeleccionada.ID || varianteSeleccionada.id;
+    const productId = product.ID ?? product.id;
+    
+    const checkAvailability = async () => {
+      setCheckingStock(true);
+      try {
+        const res = await fetch(
+          `${API_BASE}/cart/check-availability?product_id=${productId}&variant_id=${variantId}&quantity=${quantity}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setStockAvailability(data);
+        }
+      } catch (error) {
+        console.error('Error verificando stock:', error);
+      } finally {
+        setCheckingStock(false);
+      }
+    };
+    
+    checkAvailability();
+  }, [product, varianteSeleccionada, quantity]);
 
   // Calcular stock de depósito y otras ubicaciones SOLO para la variante seleccionada
   let depositoStock = null;
@@ -558,9 +599,82 @@ export default function DetalleProductoPage() {
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 {(() => {
+                  const disabled = (talles.length > 0 && !selectedSize) || (colores.length > 0 && !selectedColor);
+                  
+                  // Usar stockAvailability del API si está disponible
+                  if (stockAvailability && !disabled) {
+                    const { accion, mensaje, stock_disponible_deposito } = stockAvailability;
+                    
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-semibold text-gray-700">Cantidad:</label>
+                          <input 
+                            type="number" 
+                            min={1} 
+                            value={quantity} 
+                            onChange={e => setQuantity(Number(e.target.value))} 
+                            className="input-themed w-20 text-center"
+                            disabled={accion === "sin_stock" || checkingStock}
+                          />
+                        </div>
+                        
+                        {accion === "agregar" && (
+                          <button 
+                            onClick={handleAddToCart} 
+                            className="btn-primary flex-1 py-3"
+                            disabled={checkingStock}
+                          >
+                            🛒 Agregar al carrito
+                          </button>
+                        )}
+                        
+                        {accion === "consultar" && (
+                          <div className="relative flex-1 group">
+                            <button 
+                              onClick={handleConsultStock} 
+                              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-md"
+                              disabled={checkingStock}
+                            >
+                              💬 Consultar stock
+                            </button>
+                            {/* Tooltip al pasar el mouse */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-10">
+                              <div className="text-center">
+                                <p className="font-semibold">📦 Hay stock en otras ubicaciones</p>
+                                <p className="text-xs mt-1">Consultá disponibilidad con una vendedora</p>
+                              </div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                            {/* Mensaje cuando la cantidad excede el stock disponible */}
+                            {stock_disponible_deposito > 0 && stock_disponible_deposito < quantity && (
+                              <p className="text-xs text-amber-700 mt-1 text-center">
+                                Solo quedan {stock_disponible_deposito} {stock_disponible_deposito === 1 ? 'unidad' : 'unidades'} disponibles. Para más cantidad, consultá con una vendedora.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {accion === "sin_stock" && (
+                          <div className="flex-1">
+                            <button 
+                              className="w-full bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold cursor-not-allowed"
+                              disabled
+                            >
+                              ❌ Sin stock
+                            </button>
+                            <p className="text-xs text-red-600 mt-1 text-center">
+                              Stock insuficiente
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+
+                  // Fallback: lógica original mientras carga o sin variante seleccionada
                   const deposStock = Number(depositoStock?.stock ?? 0);
                   const hasOther = Array.isArray(otrasUbicaciones) && otrasUbicaciones.length > 0;
-                  const disabled = (talles.length > 0 && !selectedSize) || (colores.length > 0 && !selectedColor);
                   const shouldDisableQuantity = !disabled && deposStock === 0 && hasOther;
 
                   return (
@@ -573,7 +687,7 @@ export default function DetalleProductoPage() {
                           value={quantity} 
                           onChange={e => setQuantity(Number(e.target.value))} 
                           className="input-themed w-20 text-center"
-                          disabled={shouldDisableQuantity}
+                          disabled={shouldDisableQuantity || checkingStock}
                         />
                       </div>
                 {(() => {

@@ -308,10 +308,14 @@ func CheckoutCart(c *gin.Context) {
 	if err := config.DB.Where("cart_id = ?", carrito.ID).First(&orden).Error; err != nil {
 		// Si no existe, crear una nueva (caso legacy)
 		cartIDPtr := &carrito.ID
+		var assignedTo *uint
+		if carrito.VendedorID != 0 {
+			assignedTo = &carrito.VendedorID
+		}
 		orden = Order{
 			UserID:     carrito.UserID,
 			CartID:     cartIDPtr,
-			AssignedTo: carrito.VendedorID,
+			AssignedTo: assignedTo,
 			Status:     "finalizada",
 			Total:      total,
 		}
@@ -455,64 +459,115 @@ func SubmitCartForAssignment(c *gin.Context) {
 
 	// Primero intentamos asignar automáticamente por round-robin a una vendedora activa
 	var sellers []user.User
-	if err := config.DB.Where("role = ? AND active = ?", "vendedor", true).Order("id asc").Find(&sellers).Error; err != nil {
+	// Buscar vendedoras activas Y logueadas (is_online = true)
+	log.Printf("🔍 SubmitCartForAssignment - Ejecutando query para buscar vendedoras: role='vendedor', active=true, is_online=true")
+	query := config.DB.Where("role = ? AND active = ? AND is_online = ?", "vendedor", true, true).Order("id asc")
+	if err := query.Find(&sellers).Error; err != nil {
+		log.Printf("❌ SubmitCartForAssignment - Error en query: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al buscar vendedoras"})
 		return
 	}
+	log.Printf("🔍 SubmitCartForAssignment - Vendedoras encontradas: %d", len(sellers))
+	for i, seller := range sellers {
+		log.Printf("  Vendedora %d: ID=%d, Name=%s, Role=%s, Active=%t, IsOnline=%t", i+1, seller.ID, seller.Name, seller.Role, seller.Active, seller.IsOnline)
+	}
 
-	//si no hay vendedoras activas, dejamos la orden pendiente y notificamos a admins
-	if len(sellers) == 0 {
+	// Verificar si estamos en horario laboral usando la configuración de la tienda
+	now := time.Now()
+	isWorkingTime, err := settings.IsStoreOpen(now)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al verificar horario laboral"})
+		return
+	}
+	log.Printf("🔍 SubmitCartForAssignment - IsWorkingTime=%t, Hora actual=%s", isWorkingTime, now.Format("15:04"))
+	
+	// Si no hay vendedoras online o no es horario laboral, dejar pendiente para asignación posterior
+	if len(sellers) == 0 || !isWorkingTime {
 		// Asegurarse de que la orden tenga el cart_id asociado
 		orden.CartID = &carrito.ID
+		orden.Status = "pendiente_asignacion" // Mantener como pendiente
 		if err := config.DB.Create(&orden).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 		carrito.Estado = "esperando_vendedora"
 		config.DB.Save(&carrito)
-		// notificar a admins
+		
+		// Calcular próximo horario laboral
+		nextWorkingTime, err := settings.GetNextOpeningTime(now)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al calcular próximo horario"})
+			return
+		}
+		
+		// Notificar a admins
 		var admins []user.User
 		config.DB.Where("role = ?", "admin").Find(&admins)
+		mensaje := "Nueva orden pendiente de asignación: orden #" + strconv.FormatUint(uint64(orden.ID), 10)
+		if !isWorkingTime {
+			mensaje = "Nueva orden para asignar en próximo horario laboral (aprox. " + nextWorkingTime.Format("02/01 15:04") + "): orden #" + strconv.FormatUint(uint64(orden.ID), 10)
+		} else {
+			mensaje = "Nueva orden sin vendedoras online disponibles: orden #" + strconv.FormatUint(uint64(orden.ID), 10)
+		}
 		for _, a := range admins {
-			notif := notification.Notification{UserID: a.ID, Message: "Nueva orden pendiente sin vendedoras activas: orden #" + strconv.FormatUint(uint64(orden.ID), 10)}
+			notif := notification.Notification{UserID: a.ID, Message: mensaje}
 			config.DB.Create(&notif)
 		}
-		c.JSON(http.StatusCreated, gin.H{"orden": orden, "message": "No hay vendedoras activas. La orden quedó pendiente y el equipo será notificado."})
+		
+		// Notificar al cliente
+		clientMessage := "Tu orden #" + strconv.FormatUint(uint64(orden.ID), 10) + " fue recibida. Será asignada a una vendedora en el próximo horario laboral."
+		if !isWorkingTime {
+			clientMessage = "Tu orden #" + strconv.FormatUint(uint64(orden.ID), 10) + " fue recibida. Será asignada a una vendedora cuando abramos (aprox. " + nextWorkingTime.Format("02/01 15:04") + ")."
+		}
+		notifClient := notification.Notification{
+			UserID: orden.UserID, 
+			Message: clientMessage,
+		}
+		config.DB.Create(&notifClient)
+		
+		c.JSON(http.StatusCreated, gin.H{"orden": orden, "message": clientMessage})
 		return
 	}
 
-	// Determinar si hay vendedoras en su working_hours ahora
-	now := time.Now()
+	// Filtrar vendedoras que tienen horario configurado y están en su turno (opcional, ya no es obligatorio)
+	// Ya que ahora usamos el horario de la tienda, todas las vendedoras online son elegibles
 	nowMin := now.Hour()*60 + now.Minute()
 	var inShift []user.User
 	for _, s := range sellers {
-		if s.WorkingFrom == "" || s.WorkingTo == "" {
-			continue
-		}
-		// parse HH:MM
-		var fh, fm, th, tm int
-		if _, err := fmt.Sscanf(s.WorkingFrom, "%d:%d", &fh, &fm); err != nil {
-			continue
-		}
-		if _, err := fmt.Sscanf(s.WorkingTo, "%d:%d", &th, &tm); err != nil {
-			continue
-		}
-		fromMin := fh*60 + fm
-		toMin := th*60 + tm
-		if fromMin <= toMin {
-			if nowMin >= fromMin && nowMin <= toMin {
+		// Si la vendedora tiene horario individual configurado, verificarlo
+		if s.WorkingFrom != "" && s.WorkingTo != "" {
+			// parse HH:MM
+			var fh, fm, th, tm int
+			if _, err := fmt.Sscanf(s.WorkingFrom, "%d:%d", &fh, &fm); err != nil {
+				// Si no se puede parsear, incluir de todas formas
 				inShift = append(inShift, s)
+				continue
 			}
-		} else { // overnight shift
-			if nowMin >= fromMin || nowMin <= toMin {
+			if _, err := fmt.Sscanf(s.WorkingTo, "%d:%d", &th, &tm); err != nil {
 				inShift = append(inShift, s)
+				continue
 			}
+			fromMin := fh*60 + fm
+			toMin := th*60 + tm
+			if fromMin <= toMin {
+				if nowMin >= fromMin && nowMin <= toMin {
+					inShift = append(inShift, s)
+				}
+			} else { // overnight shift
+				if nowMin >= fromMin || nowMin <= toMin {
+					inShift = append(inShift, s)
+				}
+			}
+		} else {
+			// Si no tiene horario individual, asumir que está disponible en horario de la tienda
+			inShift = append(inShift, s)
 		}
 	}
 
-	eligible := sellers
-	if len(inShift) > 0 {
-		eligible = inShift
+	eligible := inShift
+	if len(eligible) == 0 {
+		// Si ninguna vendedora está en su turno individual, usar todas las online
+		eligible = sellers
 	}
 
 	// Round-robin: usamos RoundRobinState con key 'seller_rr'
@@ -560,7 +615,7 @@ func SubmitCartForAssignment(c *gin.Context) {
 		return
 	}
 
-	orden.AssignedTo = chosen.ID
+	orden.AssignedTo = &chosen.ID
 	orden.Status = "asignada"
 	// Asegurarse de que la orden tenga el cart_id asociado
 	orden.CartID = &carrito.ID
@@ -629,7 +684,7 @@ func AssignOrderSelf(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Orden no encontrada"})
 		return
 	}
-	if orden.AssignedTo != 0 {
+	if orden.AssignedTo != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Orden ya asignada"})
 		return
 	}
@@ -637,7 +692,7 @@ func AssignOrderSelf(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Orden no está en estado pendiente"})
 		return
 	}
-	orden.AssignedTo = userID
+	orden.AssignedTo = &userID
 	orden.Status = "asignada"
 	if err := config.DB.Save(&orden).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -758,7 +813,7 @@ func AssignOrderAdmin(c *gin.Context) {
 	}
 
 	// Asignar y actualizar estado
-	orden.AssignedTo = input.AssignedTo
+	orden.AssignedTo = &input.AssignedTo
 	orden.Status = "asignada"
 	if err := config.DB.Save(&orden).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

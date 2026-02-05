@@ -3,8 +3,12 @@ import React from 'react';
 import "../globals.css";
 import AdminSidebar from '../../components/AdminSidebar';
 import AdminGuard from '../../components/AdminGuard';
+import { useActivityTracking } from '@/hooks/useActivityTracking';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Activar tracking de actividad para mantener sesión online
+  useActivityTracking();
+
   return (
     <AdminGuard allowedRoles={['admin', 'encargado', 'vendedor']}>
       <div className="min-h-screen bg-gray-50">
