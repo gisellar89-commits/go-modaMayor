@@ -37,6 +37,8 @@ INSERT INTO migration_records (name) VALUES ('20251226_add_cart_expiration_field
 INSERT INTO migration_records (name) VALUES ('20260110_add_variant_info_to_order_items.sql') ON CONFLICT (name) DO NOTHING;
 INSERT INTO migration_records (name) VALUES ('20260126_add_pending_reason_to_cart_items.sql') ON CONFLICT (name) DO NOTHING;
 INSERT INTO migration_records (name) VALUES ('20260130_seed_admin_user.sql') ON CONFLICT (name) DO NOTHING;
+INSERT INTO migration_records (name) VALUES ('20260204_add_contact_addresses.sql') ON CONFLICT (name) DO NOTHING;
+INSERT INTO migration_records (name) VALUES ('20260204_create_locations_table.sql') ON CONFLICT (name) DO NOTHING;
 INSERT INTO migration_records (name) VALUES ('fix_cart_estados.sql') ON CONFLICT (name) DO NOTHING;
 
 -- Verificar que se registraron correctamente

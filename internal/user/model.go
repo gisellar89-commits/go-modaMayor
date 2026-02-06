@@ -20,4 +20,8 @@ type User struct {
 	// Horario de trabajo (formato HH:MM, por ejemplo "09:00")
 	WorkingFrom string `json:"working_from" gorm:"size:5"`
 	WorkingTo   string `json:"working_to" gorm:"size:5"`
+	// Tracking de actividad y estado online
+	LastLogin    *time.Time `json:"last_login"`
+	IsOnline     bool       `json:"is_online" gorm:"default:false"`
+	LastActivity *time.Time `json:"last_activity"`
 }

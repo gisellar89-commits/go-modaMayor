@@ -2,10 +2,14 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useActivityTracking } from "@/hooks/useActivityTracking";
 
 export default function VendedoraLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [userName, setUserName] = useState<string>("");
+
+  // Activar tracking de actividad para vendedoras
+  useActivityTracking();
 
   useEffect(() => {
     const name = localStorage.getItem("user_name") || "Vendedora";
@@ -55,7 +59,9 @@ export default function VendedoraLayout({ children }: { children: React.ReactNod
   ];
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event('auth:logout'));
     window.location.href = "/login";
   };
 

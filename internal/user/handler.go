@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgconn"
@@ -109,6 +110,16 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales inválidas"})
 		return
 	}
+	
+	// Actualizar campos de actividad y estado online
+	now := time.Now()
+	user.LastLogin = &now
+	user.IsOnline = true
+	user.LastActivity = &now
+	if err := config.DB.Save(&user).Error; err != nil {
+		// No es crítico, continuar
+	}
+	
 	token, err := GenerateJWT(user.ID, user.Email, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo generar el token"})
@@ -297,4 +308,45 @@ func UpdateProfile(c *gin.Context) {
 		"role":  user.Role,
 		"phone": user.Phone,
 	})
+}
+
+// Logout: marcar usuario como offline
+func Logout(c *gin.Context) {
+	userIDIfc, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No autenticado"})
+		return
+	}
+	userID := userIDIfc.(uint)
+	
+	// Actualizar estado a offline
+	if err := config.DB.Model(&User{}).Where("id = ?", userID).Update("is_online", false).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al cerrar sesión"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"message": "Sesión cerrada correctamente"})
+}
+
+// UpdateActivity: actualizar last_activity del usuario (llamado periódicamente desde el frontend)
+func UpdateActivity(c *gin.Context) {
+	userIDIfc, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No autenticado"})
+		return
+	}
+	userID := userIDIfc.(uint)
+	
+	now := time.Now()
+	updates := map[string]interface{}{
+		"last_activity": now,
+		"is_online":     true,
+	}
+	
+	if err := config.DB.Model(&User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar actividad"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"message": "Actividad actualizada"})
 }

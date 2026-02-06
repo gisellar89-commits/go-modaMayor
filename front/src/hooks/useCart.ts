@@ -230,7 +230,20 @@ export default function useCart() {
         throw new Error(handleAuthError(res.status, errorData));
       }
       
+      // Limpiar el estado inmediatamente en lugar de esperar fetchCart
+      const emptyCart = { ...cartState, items: [] };
+      setCartState(emptyCart);
+      
+      // Actualizar el store global también
+      if (typeof window !== 'undefined') {
+        (window as any).__globalCart = emptyCart;
+        (window as any).__cartListeners?.forEach((fn: any) => {
+          try { fn(emptyCart); } catch (e) {}
+        });
+      }
+      
       setMessage("Carrito vaciado");
+      // Hacer fetch después para sincronizar con el backend
       await fetchCart();
     } catch (err) {
       if (err instanceof Error) {

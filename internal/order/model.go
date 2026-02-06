@@ -14,7 +14,7 @@ type Order struct {
 	Status string      `json:"status"`
 	Items  []OrderItem `json:"items" gorm:"foreignKey:OrderID"`
 	// AssignedTo: vendedor (user.id) que quedó a cargo de la compra; puede estar vacío hasta asignación
-	AssignedTo     uint       `json:"assigned_to" gorm:"default:0"`
+	AssignedTo     *uint      `json:"assigned_to"`
 	AssignedToUser *user.User `json:"AssignedToUser" gorm:"foreignKey:AssignedTo"`
 	// Payment details (simple): método y referencia cuando corresponda
 	PaymentMethod    string `json:"payment_method" gorm:"size:64"`

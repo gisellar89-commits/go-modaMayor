@@ -100,6 +100,12 @@ func main() {
 		if err := db.AutoMigrate(&settings.PriceTier{}); err != nil {
 			panic("Falló migración PriceTier: " + err.Error())
 		}
+		if err := db.AutoMigrate(&settings.StoreHours{}); err != nil {
+			panic("Falló migración StoreHours: " + err.Error())
+		}
+		if err := db.AutoMigrate(&settings.StoreHoliday{}); err != nil {
+			panic("Falló migración StoreHoliday: " + err.Error())
+		}
 		// Topbar settings migration
 		if err := db.AutoMigrate(&settings.Topbar{}); err != nil {
 			panic("Falló migración Topbar: " + err.Error())
@@ -166,14 +172,20 @@ func main() {
 	// 3. Guardar DB global para handlers
 	config.DB = db
 
-	// 4. Levantar el servidor
-	router := routes.SetupRouter(db)
-
+	// 4. Iniciar trabajos en background
 	// Start background snapshotter (runs every hour)
 	order.StartBestsellerSnapshotter(time.Hour)
 
 	// Start cart expiration job (runs every 2 hours)
 	cart.StartCartExpirationJob(2 * time.Hour)
+	
+	// Start user activity monitor (marks inactive users as offline)
+	user.StartActivityMonitor()
+	
+	// Start pending order assignment job (assigns pending orders when sellers are available)
+	order.StartPendingOrderAssignment()
 
+	// 5. Levantar el servidor
+	router := routes.SetupRouter(db)
 	router.Run(":8080")
 }

@@ -10,6 +10,7 @@ import (
 	"go-modaMayor/internal/user"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -326,7 +327,7 @@ func GetCart(c *gin.Context) {
 	c.JSON(http.StatusOK, cart)
 }
 
-// Helper para verificar disponibilidad de stock
+// Helper para verificar disponibilidad de stock (solo en deposito)
 func checkStockAvailability(productID uint, variantID *uint, quantity int) bool {
 	// Si no hay variant_id (producto sin variantes), retornar true
 	if variantID == nil {
@@ -335,13 +336,110 @@ func checkStockAvailability(productID uint, variantID *uint, quantity int) bool 
 	
 	var totalStock int64
 	if err := config.DB.Table("location_stocks").
-		Where("product_id = ? AND variant_id = ? AND deleted_at IS NULL", productID, *variantID).
+		Where("product_id = ? AND variant_id = ? AND location = ? AND deleted_at IS NULL", productID, *variantID, "deposito").
+		Select("COALESCE(stock - reserved, 0)").
+		Scan(&totalStock).Error; err != nil {
+		return false
+	}
+	return int(totalStock) >= quantity
+}
+
+// Helper para obtener el stock disponible total (solo en deposito)
+func getAvailableStock(productID uint, variantID *uint) int {
+	// Si no hay variant_id (producto sin variantes), retornar 0
+	if variantID == nil {
+		return 0
+	}
+	
+	var totalStock int64
+	if err := config.DB.Table("location_stocks").
+		Where("product_id = ? AND variant_id = ? AND location = ? AND deleted_at IS NULL", productID, *variantID, "deposito").
+		Select("COALESCE(stock - reserved, 0)").
+		Scan(&totalStock).Error; err != nil {
+		return 0
+	}
+	return int(totalStock)
+}
+
+// Helper para verificar si hay stock en otras ubicaciones (NO deposito)
+func hasStockInOtherLocations(productID uint, variantID *uint, quantity int) bool {
+	// Si no hay variant_id (producto sin variantes), retornar false
+	if variantID == nil {
+		return false
+	}
+	
+	var totalStock int64
+	if err := config.DB.Table("location_stocks").
+		Where("product_id = ? AND variant_id = ? AND location != ? AND deleted_at IS NULL", productID, *variantID, "deposito").
 		Select("COALESCE(SUM(stock - reserved), 0)").
 		Scan(&totalStock).Error; err != nil {
 		return false
 	}
 	return int(totalStock) >= quantity
 }
+
+// CheckStockAvailabilityEndpoint - Endpoint para verificar disponibilidad de stock antes de agregar al carrito
+func CheckStockAvailabilityEndpoint(c *gin.Context) {
+	productIDStr := c.Query("product_id")
+	variantIDStr := c.Query("variant_id")
+	quantityStr := c.Query("quantity")
+	
+	if productIDStr == "" || quantityStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id y quantity son requeridos"})
+		return
+	}
+	
+	productID, err := strconv.ParseUint(productIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "product_id inválido"})
+		return
+	}
+	
+	quantity, err := strconv.Atoi(quantityStr)
+	if err != nil || quantity <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "quantity inválida"})
+		return
+	}
+	
+	var variantIDPtr *uint
+	if variantIDStr != "" {
+		variantID, err := strconv.ParseUint(variantIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "variant_id inválido"})
+			return
+		}
+		vid := uint(variantID)
+		variantIDPtr = &vid
+	}
+	
+	// Verificar stock en depósito
+	stockDeposito := getAvailableStock(uint(productID), variantIDPtr)
+	hasEnoughInDeposito := stockDeposito >= quantity
+	
+	// Verificar stock en otras ubicaciones
+	hasInOtherLocations := hasStockInOtherLocations(uint(productID), variantIDPtr, quantity)
+	
+	response := gin.H{
+		"stock_disponible_deposito": stockDeposito,
+		"cantidad_solicitada": quantity,
+		"suficiente_en_deposito": hasEnoughInDeposito,
+		"disponible_otras_ubicaciones": hasInOtherLocations,
+	}
+	
+	if hasEnoughInDeposito {
+		response["mensaje"] = "Stock disponible"
+		response["accion"] = "agregar" // Puede agregar normalmente
+	} else if hasInOtherLocations {
+		response["mensaje"] = fmt.Sprintf("Solo quedan %d unidades en depósito. Hay stock en otras ubicaciones, consultá disponibilidad con una vendedora.", stockDeposito)
+		response["accion"] = "consultar" // Debe consultar stock
+	} else {
+		response["mensaje"] = "Stock insuficiente"
+		response["accion"] = "sin_stock" // No hay stock
+	}
+	
+	c.JSON(http.StatusOK, response)
+}
+
 
 // Agregar producto al carrito
 type AddToCartInput struct {
@@ -440,9 +538,9 @@ func AddToCart(c *gin.Context) {
 			}
 		}
 	}
-	// Permitir modificar solo si el estado es 'pendiente', 'edicion' o 'esperando_vendedora'
-	// Si el carrito existe pero tiene un estado no válido (ej: fue completado), retornar error
-	if cart.Estado != "pendiente" && cart.Estado != "edicion" && cart.Estado != "esperando_vendedora" {
+	// Permitir modificar solo si el estado es 'pendiente' o 'edicion'
+	// Si el carrito existe pero tiene un estado no válido, retornar error
+	if cart.Estado != "pendiente" && cart.Estado != "edicion" {
 		// Si se especificó cart_id (vendedora agregando a carrito de cliente), no permitir
 		if cartIDStr != "" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "No se puede modificar el carrito en estado: " + cart.Estado})
@@ -473,6 +571,24 @@ func AddToCart(c *gin.Context) {
 	
 	if err := query.First(&item).Error; err == nil {
 		// update quantity; if client marked requires_stock_check, preserve/upgrade flag
+		
+		// VALIDACIÓN DE STOCK: Verificar stock disponible antes de agregar cantidad
+		newQuantity := item.Quantity + input.Quantity
+		if input.Location == "" && !checkStockAvailability(input.ProductID, variantID, newQuantity) {
+			// Si no hay stock en deposito, verificar si hay en otras ubicaciones
+			if hasStockInOtherLocations(input.ProductID, variantID, newQuantity) {
+				// Hay stock en otras ubicaciones - permitir agregar pero requiere consulta
+				input.RequiresStockCheck = true
+			} else {
+				// No hay stock en ninguna ubicación
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Stock insuficiente para la cantidad solicitada",
+					"available_stock": getAvailableStock(input.ProductID, variantID),
+				})
+				return
+			}
+		}
+		
 		// If a location reservation exists, attempt to reserve additional quantity in same location
 		if input.Location != "" && item.Location != "" && item.Location == input.Location {
 			// try to reserve additional amount
@@ -517,6 +633,22 @@ func AddToCart(c *gin.Context) {
 		}
 		config.DB.Save(&item)
 	} else {
+		// VALIDACIÓN DE STOCK: Verificar stock disponible antes de crear nuevo item
+		if input.Location == "" && !checkStockAvailability(input.ProductID, variantID, input.Quantity) {
+			// Si no hay stock en deposito, verificar si hay en otras ubicaciones
+			if hasStockInOtherLocations(input.ProductID, variantID, input.Quantity) {
+				// Hay stock en otras ubicaciones - permitir agregar pero requiere consulta
+				input.RequiresStockCheck = true
+			} else {
+				// No hay stock en ninguna ubicación
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Stock insuficiente para la cantidad solicitada",
+					"available_stock": getAvailableStock(input.ProductID, variantID),
+				})
+				return
+			}
+		}
+		
 		// Determinar si auto-confirmar el stock
 		// Solo auto-confirmar si NO requiere verificación de stock
 		stockConfirmed := !input.RequiresStockCheck
@@ -612,8 +744,9 @@ func RemoveFromCart(c *gin.Context) {
 		}
 		log.Printf("🗑️ RemoveFromCart - Usando carrito especificado: cart_id=%d, estado=%s", cart.ID, cart.Estado)
 	} else {
-		// Si no viene cart_id, buscar el carrito activo del usuario actual
-		if err := config.DB.Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).Order("id DESC").First(&cart).Error; err != nil {
+		// Si no viene cart_id, buscar el carrito activo del usuario actual (misma lógica que GetCart, ClearCart, etc.)
+		if err := config.DB.Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
+			Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").First(&cart).Error; err != nil {
 			log.Printf("❌ RemoveFromCart - Carrito activo NO encontrado para user_id=%d", userID)
 			c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
 			return
@@ -628,15 +761,7 @@ func RemoveFromCart(c *gin.Context) {
 		return
 	}
 	// Permitir modificaciones solo en estados editables
-	allowedStates := []string{"pendiente", "edicion", "esperando_vendedora", "listo_para_pago"}
-	stateAllowed := false
-	for _, s := range allowedStates {
-		if cart.Estado == s {
-			stateAllowed = true
-			break
-		}
-	}
-	if !stateAllowed {
+	if cart.Estado != "pendiente" && cart.Estado != "edicion" {
 		log.Printf("❌ RemoveFromCart - Estado no permite modificaciones: %s", cart.Estado)
 		c.JSON(http.StatusForbidden, gin.H{"error": "No se puede modificar el carrito en este estado: " + cart.Estado})
 		return
@@ -687,7 +812,9 @@ func ClearCart(c *gin.Context) {
 		return
 	}
 	var cart Cart
-	if err := config.DB.Where("user_id = ?", userID).First(&cart).Error; err != nil {
+	// Buscar el carrito activo del usuario (pendiente o edicion)
+	if err := config.DB.Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
+		Order("id DESC").First(&cart).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
 		return
 	}
@@ -708,10 +835,13 @@ func ClearCart(c *gin.Context) {
 			}
 		}
 	}
-	if err := config.DB.Where("cart_id = ?", cart.ID).Delete(&CartItem{}).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// Delete all cart items using Unscoped to permanently delete
+	result := config.DB.Unscoped().Where("cart_id = ?", cart.ID).Delete(&CartItem{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
 		return
 	}
+	log.Printf("🗑️  ClearCart - Deleted %d items from cart_id=%d", result.RowsAffected, cart.ID)
 	c.JSON(http.StatusOK, gin.H{"message": "Carrito vaciado"})
 }
 
@@ -801,7 +931,20 @@ func UpdateCartItem(c *gin.Context) {
 		return
 	}
 	productID := c.Param("product_id")
-	variantID := c.Query("variant_id")
+	variantIDStr := c.Query("variant_id")
+	
+	// Convertir variantID a uint si existe
+	var variantIDPtr *uint
+	if variantIDStr != "" {
+		variantIDInt, err := strconv.ParseUint(variantIDStr, 10, 32)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "variant_id inválido"})
+			return
+		}
+		variantID := uint(variantIDInt)
+		variantIDPtr = &variantID
+	}
+	
 	var input UpdateCartItemInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -829,24 +972,33 @@ func UpdateCartItem(c *gin.Context) {
 			}
 		}
 	} else {
-		// Buscar carrito activo del usuario (con estado editable)
+		// Buscar carrito activo del usuario (misma lógica que GetCart, ClearCart y GetCartSummary)
 		log.Printf("🔄 UpdateCartItem - Buscando carrito activo para user_id=%d", userID)
-		if err := config.DB.Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).
-			Order("id DESC").First(&cart).Error; err != nil {
+		if err := config.DB.Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
+			Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").First(&cart).Error; err != nil {
 			log.Printf("❌ UpdateCartItem - Carrito activo NO encontrado para user_id=%d", userID)
 			c.JSON(http.StatusNotFound, gin.H{"error": "Carrito no encontrado"})
 			return
 		}
 		log.Printf("🔄 UpdateCartItem - Carrito activo encontrado: cart_id=%d, user_id=%d, estado=%s", cart.ID, cart.UserID, cart.Estado)
 	}
-	// Permitir modificaciones solo en estados editables o cuando está esperando vendedora
-	if cart.Estado != "pendiente" && cart.Estado != "edicion" && cart.Estado != "esperando_vendedora" {
+	// Permitir modificaciones solo en estados editables
+	if cart.Estado != "pendiente" && cart.Estado != "edicion" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "No se puede modificar el carrito en este estado"})
 		return
 	}
 	var item CartItem
-	log.Printf("🔄 UpdateCartItem - Buscando item: cart_id=%d, product_id=%s, variant_id=%s", cart.ID, productID, variantID)
-	if err := config.DB.Where("cart_id = ? AND product_id = ? AND variant_id = ?", cart.ID, productID, variantID).First(&item).Error; err != nil {
+	log.Printf("🔄 UpdateCartItem - Buscando item: cart_id=%d, product_id=%s, variant_id=%v", cart.ID, productID, variantIDPtr)
+	
+	// Buscar el item dependiendo si tiene variant o no
+	query := config.DB.Where("cart_id = ? AND product_id = ?", cart.ID, productID)
+	if variantIDPtr != nil {
+		query = query.Where("variant_id = ?", *variantIDPtr)
+	} else {
+		query = query.Where("variant_id IS NULL OR variant_id = 0")
+	}
+	
+	if err := query.First(&item).Error; err != nil {
 		log.Printf("❌ UpdateCartItem - Item NO encontrado en carrito activo")
 		c.JSON(http.StatusNotFound, gin.H{"error": "Producto/variante no encontrado en el carrito"})
 		return
@@ -857,6 +1009,14 @@ func UpdateCartItem(c *gin.Context) {
 		newQty := *input.Quantity
 		delta := newQty - item.Quantity
 		if delta > 0 {
+			// VALIDACIÓN DE STOCK para clientes (sin location) antes de aumentar cantidad
+			if item.Location == "" && !checkStockAvailability(item.ProductID, item.VariantID, newQty) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Stock insuficiente para la cantidad solicitada",
+					"available_stock": getAvailableStock(item.ProductID, item.VariantID),
+				})
+				return
+			}
 			// need to reserve additional quantity if item.Location is set
 			if item.Location != "" {
 				var ls product.LocationStock
@@ -1593,10 +1753,10 @@ func GetCartSummary(c *gin.Context) {
 	}
 
 	var cart Cart
-	// IMPORTANTE: Usar la misma lógica que GetCart y AddToCart
-	// Priorizar carritos en edicion y luego por updated_at más reciente
+	// IMPORTANTE: Usar la misma lógica que GetCart, AddToCart y ClearCart
+	// Solo carritos activos (pendiente/edicion), no incluir esperando_vendedora ni listo_para_pago
 	if err := config.DB.Preload("Items.Product").Preload("Items.Variant").
-		Where("user_id = ? AND estado IN ('pendiente','edicion','esperando_vendedora','listo_para_pago')", userID).
+		Where("user_id = ? AND estado IN ?", userID, []string{"pendiente", "edicion"}).
 		Order("CASE WHEN estado = 'edicion' THEN 0 ELSE 1 END, updated_at DESC").
 		First(&cart).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
